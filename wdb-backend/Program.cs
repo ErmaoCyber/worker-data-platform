@@ -1,20 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using wdb_backend.Abstractions;
 using wdb_backend.Data;
-using wdb_backend.Abstractions;
-using wdb_backend.Services;
-using System.Reflection;
-using System.Text.Json.Serialization;
-using wdb_backend.Abstractions;
-using wdb_backend.Services;
 using wdb_backend.Models;
-
+using wdb_backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================
-// service 
+// services
 // ============================
 
 // OpenAPI / Swagger
@@ -27,7 +22,7 @@ builder.Services.AddSwaggerGen(options =>
     options.IncludeXmlComments(xmlPath);
 });
 
-// CORS make sure to add before authentication and authorization middlewares, otherwise the preflight request will be blocked before reaching CORS middleware.
+// CORS for Next.js frontend
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
@@ -38,40 +33,40 @@ builder.Services.AddCors(options =>
     });
 });
 
-// infrastructure 
+// Infrastructure
 builder.Services.AddInfrastructure(builder.Configuration);
-
-// application services
-builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
-builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
-builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
-
 
 // DbContext
 builder.Services.AddDbContextPool<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Controllers(with JSON enum converter)
+// Controllers with JSON enum converter
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+// Application services
 builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
 builder.Services.AddScoped<IPermissionRepository, PermissionRepoImpl>();
+
 builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
 builder.Services.AddScoped<IRequestRepository, RequestRepoImpl>();
+
 builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
 builder.Services.AddScoped<IWorkerInfoRepository, WorkerInfoRepoImpl>();
+
 builder.Services.AddScoped<IEmployerService, EmployerServicerImpl>();
 builder.Services.AddScoped<IEmployerRepository, EmployerRepoImpl>();
-builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
-// Services
+
 builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
+builder.Services.AddScoped<IEmployerDashboardService, EmployerDashboardServiceImpl>();
+
+builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
 
 var app = builder.Build();
 
 // ============================
-// middleware the order matters!
+// middleware - order matters
 // ============================
 
 if (app.Environment.IsDevelopment())
@@ -80,7 +75,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("FrontendPolicy");   // CORS use once.
+app.UseCors("FrontendPolicy");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
