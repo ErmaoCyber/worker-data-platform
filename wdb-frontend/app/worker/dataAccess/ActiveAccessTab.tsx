@@ -33,9 +33,12 @@ export default function ActiveAccessTab() {
             .finally(() => setIsLoading(false));
     }, [workerId, refreshTrigger]);
 
-    const handleRevoke = (itemId: string, _workerInfoIds: string[]) => {
-        FetchApi(`/api/Permission/${itemId}/reject`)
-            .then(() => setRefreshTrigger((n) => n + 1));
+    const handleRevoke = (itemId: string, workerInfoIds: string[]) => {
+        Promise.all(
+            workerInfoIds.map((permissionId) =>
+                FetchApi(`/api/Permission/${permissionId}/reject`, { method: "PATCH" })
+            )
+        ).then(() => setRefreshTrigger((n) => n + 1));
     };
 
     if (isLoading) return <p className="text-sm text-gray-500">Loading...</p>;
