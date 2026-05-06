@@ -10,9 +10,10 @@ interface ConfirmModalProps {
     onConfirm: () => void;
     onCancel: () => void;
     showExpiry: boolean;
+    choseExpiry: (date: string) => void;
 }
 
-export default function ConfirmModal({ company, status, selectedFields, onConfirm, onCancel, showExpiry }: ConfirmModalProps) {
+export default function ConfirmModal({ company, status, selectedFields, onConfirm, onCancel, showExpiry, choseExpiry}: ConfirmModalProps) {
     const [expiryDate, setExpiryDate] = useState<Date | null>(null);
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -36,13 +37,17 @@ export default function ConfirmModal({ company, status, selectedFields, onConfir
                     {showExpiry && (<DatePicker
                         label={"Set expiry date of how long your data can be accessed"}
                         value={expiryDate}
-                        onChange={setExpiryDate}
+                        onChange={(date) => {
+                            setExpiryDate(date);
+                            choseExpiry(date ? date.toISOString() : "");
+                        }}
                         required={true}>
                     </DatePicker>
                     )}
+                    
                 </>
 
-
+                    
 
                 <div className="flex gap-3 justify-end mt-6">
                     <button

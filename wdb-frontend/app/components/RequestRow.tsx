@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FetchApi } from '../../lib/api';
 import ConfirmModal from "./ConfirmModal";
 
@@ -17,6 +17,7 @@ export interface Row {
     fields: Field[];
     reason: string;
     onComplete: (id:string) => void;
+    expiryDate: string;
 }
 
 
@@ -26,6 +27,8 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
     const [pendingAction, setPendingAction] = useState("");
     const [showModal, setShowModal] = useState(false);
     const [showExpiry, setShowExpiry] = useState(false);
+    const [expiryDate, setExpiryDate] = useState("");
+    
 
     const toggleField = (label: string) => {
         setCheckedFields((prev) =>
@@ -33,7 +36,12 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
         );
     };
 
+    const onExpiry = (date: string) => {
+        setExpiryDate(date);
+    };
 
+    useEffect(() => {console.log("expiryDate:", expiryDate, typeof expiryDate)}
+    )
 
     async function changePermission(status: "approve"|"reject") {
         const checkedIds = checkedFields.filter((f) => f.checked).map((f)=> f.id);
@@ -41,7 +49,13 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
             await Promise.all(
                 checkedIds.map((permissionid) =>
                     FetchApi(`/api/Permission/${permissionid}/${status}`,{
-                        method: "PATCH"
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(
+                            expiryDate
+                        ),
                     }
                 ))
             );
@@ -117,6 +131,7 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
                         setPendingAction("");
                     }}
                     showExpiry={showExpiry}
+                    choseExpiry={onExpiry}
                 />
              )}
         </div>
