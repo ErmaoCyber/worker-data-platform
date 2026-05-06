@@ -19,12 +19,13 @@ public class FindWorkerInfosByEmailUsecaseTests
         var worker_info1 = new WorkerInfo { Desc = "address", Value = "havana rise" };
         var worker_info2 = new WorkerInfo { Desc = "phone", Value = "123456" };
         var workerInfos = new List<WorkerInfo>();
+        var fakeEmployerId = Guid.NewGuid();
         workerInfos.Add(worker_info1);
         workerInfos.Add(worker_info2);
         mockWorkerService.Setup(r => r.GetByEmailAsync(fakeWorker.Email)).ReturnsAsync(fakeWorker);
-        mockWorkerInfoService.Setup(r => r.GetAllAsync(fakeWorker.Id)).ReturnsAsync(workerInfos);
+        mockWorkerInfoService.Setup(r => r.GetEffectiveWorkerInfo(fakeWorker.Id,fakeEmployerId,default)).ReturnsAsync(workerInfos);
         // Act
-        var resultWorkerInfos = await findUsecase.FindWorkerInfosByEmail(fakeWorker.Email, default);
+        var resultWorkerInfos = await findUsecase.FindWorkerInfosByEmail(fakeWorker.Email,fakeEmployerId, default);
         // Assert
         Assert.Equivalent(workerInfos, resultWorkerInfos);
     }
@@ -37,9 +38,10 @@ public class FindWorkerInfosByEmailUsecaseTests
         var mockWorkerInfoService = new Mock<IWorkerInfoService>();
         var findUsecase = new FindWorkerInfosByEmailUsecaseImpl(mockWorkerService.Object, mockWorkerInfoService.Object);
         var fakeWorker = new Worker { Id = Guid.NewGuid(), Email = "test@email", Name = "test" };
+        var fakeEmployerId = Guid.NewGuid();
     
         // Act
-        var resultWorkerInfos = await findUsecase.FindWorkerInfosByEmail(fakeWorker.Email, default);
+        var resultWorkerInfos = await findUsecase.FindWorkerInfosByEmail(fakeWorker.Email, fakeEmployerId,default);
         // Assert
         Assert.Empty(resultWorkerInfos);
     }

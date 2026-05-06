@@ -23,13 +23,24 @@ public class EmployerControllerTests
         var mockFindInfosUsecase = new Mock<IFindWorkerInfosByEmailUsecase>();
         var mockWorkerService = new Mock<IWorkerService>();
         var employerController = new EmployerController(mockCreateDataUsecase.Object, mockFindInfosUsecase.Object, mockWorkerService.Object);
+
+        //JWT claims
+        var fakeEmployerId = Guid.NewGuid();
+        var claims = new List<Claim> { new Claim("sub", fakeEmployerId.ToString()) };
+        var identity = new ClaimsIdentity(claims);
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        employerController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+        };
+
         var email = "test@email";
         var worker_info1 = new WorkerInfo { Desc = "address", Value = "havana", Id = Guid.NewGuid() };
         var worker_info2 = new WorkerInfo { Desc = "phone", Value = "123456", Id = Guid.NewGuid() };
         var workerInfos = new List<WorkerInfo>();
         workerInfos.Add(worker_info1);
         workerInfos.Add(worker_info2);
-        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email)).ReturnsAsync(workerInfos);
+        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
 
         var expectedWorkerInfoDtos = new List<WorkerInfoDto>
         {
@@ -58,9 +69,20 @@ public class EmployerControllerTests
         var mockFindInfosUsecase = new Mock<IFindWorkerInfosByEmailUsecase>();
         var mockWorkerService = new Mock<IWorkerService>();
         var employerController = new EmployerController(mockCreateDataUsecase.Object, mockFindInfosUsecase.Object, mockWorkerService.Object);
+
+        //JWT claims
+        var fakeEmployerId = Guid.NewGuid();
+        var claims = new List<Claim> { new Claim("sub", fakeEmployerId.ToString()) };
+        var identity = new ClaimsIdentity(claims);
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        employerController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+        };
+
         var email = "test@email";
         var workerInfos = new List<WorkerInfo>();
-        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email)).ReturnsAsync(workerInfos);
+        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
 
         // Act
         var Result = await employerController.GetWorkerInfosByEmail(email);
@@ -81,10 +103,10 @@ public class EmployerControllerTests
         var mockFindInfosUsecase = new Mock<IFindWorkerInfosByEmailUsecase>();
         var mockWorkerService = new Mock<IWorkerService>();
         var employerController = new EmployerController(mockCreateDataUsecase.Object, mockFindInfosUsecase.Object, mockWorkerService.Object);
-        var employerId = Guid.NewGuid();
+        var fakeEmployerId = Guid.NewGuid();
         var claims = new List<Claim>
 {
-    new Claim(JwtRegisteredClaimNames.Sub, employerId.ToString())
+    new Claim(JwtRegisteredClaimNames.Sub, fakeEmployerId.ToString())
 };
         employerController.ControllerContext = new ControllerContext
         {
@@ -94,8 +116,9 @@ public class EmployerControllerTests
             }
         };
 
+
         var email = "test@email";
-        var fakeRequest = new Request { EmployerId = employerId, WorkerId = Guid.NewGuid(), Reason = "check basic info" };
+        var fakeRequest = new Request { EmployerId = fakeEmployerId, WorkerId = Guid.NewGuid(), Reason = "check basic info" };
         var worker_info1 = new WorkerInfo { Desc = "address", Value = "havana rise", WorkerId = fakeRequest.WorkerId };
         var worker_info2 = new WorkerInfo { Desc = "phone", Value = "123456", WorkerId = fakeRequest.WorkerId };
         var workerInfos = new List<WorkerInfo>();
@@ -103,7 +126,7 @@ public class EmployerControllerTests
         workerInfos.Add(worker_info2);
         var infoDesc = new List<string> { worker_info1.Id.ToString(), worker_info2.Id.ToString() };
         var CreateRequestDTO = new CreateRequestUsecaseDTO { Email = email, InfoDesc = infoDesc, Reason = fakeRequest.Reason };
-        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email)).ReturnsAsync(workerInfos);
+        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
         mockCreateDataUsecase.Setup(r => r.CreateDataAccessRequest(workerInfos, fakeRequest.EmployerId, fakeRequest.WorkerId, fakeRequest.Reason)).Returns(Task.CompletedTask);
 
         var fakeRequestDTO = new CreateRequestUsecaseDTO { Email = email, InfoDesc = infoDesc, Reason = fakeRequest.Reason };
