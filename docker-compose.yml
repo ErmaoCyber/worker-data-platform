@@ -7,7 +7,12 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5258
       - ConnectionStrings__DefaultConnection=${CONNECTION_STRING}
-    
+      - Blockchain__RpcUrl=${BLOCKCHAIN_RPC_URL}
+      - Blockchain__ContractAddress=${BLOCKCHAIN_CONTRACT_ADDRESS}
+      - Blockchain__AbiPath=${BLOCKCHAIN_ABI_PATH}
+    volumes:
+      - ./wdb-blockchain/artifacts:/app/blockchain-artifacts:ro
+
   wdb-frontend:
     build: ./wdb-frontend
     ports:

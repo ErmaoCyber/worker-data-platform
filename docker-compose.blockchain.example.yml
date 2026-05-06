@@ -1,0 +1,8 @@
+services:
+  hardhat-node:
+    build:
+      context: ./wdb-blockchain
+    container_name: wdb-hardhat-node-only
+    ports:
+      - "8545:8545"
+    command: npx hardhat node --hostname 0.0.0.0
