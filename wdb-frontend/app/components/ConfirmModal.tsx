@@ -41,7 +41,7 @@ export default function ConfirmModal({ company, status, selectedFields, onConfir
                             setExpiryDate(date);
                             choseExpiry(date ? date.toISOString() : "");
                         }}
-                        required={true}>
+                        >
                     </DatePicker>
                     )}
                     

@@ -16,7 +16,7 @@ export interface Row {
     date:string;
     fields: Field[];
     reason: string;
-    onComplete: (id:string) => void;
+    onComplete: () => void;
     expiryDate: string;
 }
 
@@ -40,8 +40,8 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
         setExpiryDate(date);
     };
 
-    useEffect(() => {console.log("expiryDate:", expiryDate, typeof expiryDate)}
-    )
+    // useEffect(() => {console.log("expiryDate:", expiryDate, typeof expiryDate)}
+    // )
 
     async function changePermission(status: "approve"|"reject") {
         const checkedIds = checkedFields.filter((f) => f.checked).map((f)=> f.id);
@@ -54,12 +54,12 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify(
-                            expiryDate
+                            expiryDate? expiryDate : null
                         ),
                     }
                 ))
             );
-            onComplete(id);
+            onComplete();
             } catch (error) {
                 setErrorMsg(`${error}`)
             }

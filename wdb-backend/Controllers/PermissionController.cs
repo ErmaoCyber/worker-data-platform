@@ -18,7 +18,7 @@ public class PermissionController:ControllerBase
     }
 
     [HttpPatch("{permissionid}/approve")]
-    public async Task<ActionResult<Permission>> ApprovePermission (Guid permissionId, [FromBody] DateTime expiryDate,CancellationToken cancellationToken)
+    public async Task<ActionResult<Permission>> ApprovePermission (Guid permissionId, [FromBody] DateTime? expiryDate, CancellationToken cancellationToken)
     {
         try
         {

@@ -8,11 +8,12 @@ export default function ActiveRequestTab(){
     const [rows, setRows] = useState<Row[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     
     useEffect(() => {
         const token = localStorage.getItem('accessToken');
             getRows(token);
-        }, []);
+        }, [refreshTrigger]);
        
         async function getRows(token: string|null) {
             setIsLoading(true);
@@ -36,8 +37,8 @@ export default function ActiveRequestTab(){
             }
        }
     
-    const handleComplete = (id: string) => {
-    setRows((prev) => prev.filter((r) => r.id !== id));
+    const handleComplete = () => {
+        setRefreshTrigger(prev => prev + 1);
     };
     
     if (!isLoading && rows.length === 0) {

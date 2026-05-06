@@ -41,7 +41,7 @@ public class PermissionServiceImpl:IPermissionService
 
         permission.Status = (PermissionStatus)status;
         permission.LastUpdatedAt = DateTime.UtcNow;
-        permission.ExpiryDate = (DateTime)expiryDate;
+        permission.ExpiryDate = expiryDate;
         var result = await _permissionRepository.UpdateAsync(permissionId, permission, cancellationToken);
         return result;
     }
