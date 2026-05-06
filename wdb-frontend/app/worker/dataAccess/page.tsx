@@ -4,6 +4,8 @@ import { FetchApi } from '../../../lib/api';
 import { useState, ReactNode, useEffect } from 'react';
 import { Row } from "../../components/RequestRow"
 import ActiveRequestTab from './ActiveRequestTab';
+import ActiveAccessTab from './ActiveAccessTab';
+
 
 interface TabProps {
     id: string;
@@ -15,6 +17,15 @@ interface TabProps {
 export default function Page() {
 
     const [activeTab, setActiveTab] = useState<string>("active-request");
+    const [workerId, setWorkerId] = useState('');
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    useEffect(() => {
+        const id = localStorage.getItem('userId');
+        if (id) setWorkerId(id);
+    }, []);
+
+
     const tabs: TabProps[] = [
         {
             id: "active-request",
@@ -29,9 +40,9 @@ export default function Page() {
             label: "Active Access",
             children:
                 <div>
-                    <p>
-                        List of permission approved
-                    </p>
+
+                    <ActiveAccessTab />
+
                 </div>
         }
     ];
@@ -41,17 +52,17 @@ export default function Page() {
     return (
         <main className="p-8">
             <div>
-                <h1 className="text-2xl font-semibold mb-6">Data Access</h1>
+                <h1 className="text-2xl font-semibold mb-6 text-gray-900">Data Access</h1>
             </div>
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
+            <div className="flex border-b border-gray-200">
                 {tabs.map(({ id, label }) =>
                     <button
                         key={id}
                         onClick={() => setActiveTab(id)}
                         className={`
                         px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer 
-                        ${activeTab === id ? "border-gray-900 text-gray-900 dark:border-white dark:text-white" :
-                                "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`
+                        ${activeTab === id ? "border-gray-900 text-gray-900" :
+                                "border-transparent text-gray-500 hover:text-gray-700"}`
                         }
                     >
                         {label}

@@ -52,7 +52,7 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
 
 
     return (
-        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200">
 
             <div className="flex flex-col gap-2">
 

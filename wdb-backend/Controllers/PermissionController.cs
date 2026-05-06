@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using wdb_backend.Abstractions;
-using wdb_backend.Data;
 using wdb_backend.Models;
-using wdb_backend.Services;
 namespace wdb_backend.Controllers;
 
 /// <summary>
@@ -19,7 +17,7 @@ public class PermissionController : ControllerBase
         _permissionService = permissionService;
     }
 
-    [HttpGet("{permissionid}/approve")]
+    [HttpPatch("{permissionid}/approve")]
     public async Task<ActionResult<Permission>> ApprovePermission(Guid permissionId, CancellationToken cancellationToken)
     {
         try
@@ -38,7 +36,7 @@ public class PermissionController : ControllerBase
 
     }
 
-    [HttpGet("{permissionid}/reject")]
+    [HttpPatch("{permissionid}/reject")]
     public async Task<ActionResult<Permission>> RejectPermission(Guid permissionId, CancellationToken cancellationToken)
     {
         try
