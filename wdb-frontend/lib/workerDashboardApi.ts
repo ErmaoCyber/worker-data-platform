@@ -8,6 +8,7 @@ export type WorkerBasicInfo = {
   name: string;
   email: string;
   verified: boolean;
+  blockchainAddress?: string;
 };
 
 export type WorkerDashboardRequest = {
@@ -18,10 +19,19 @@ export type WorkerDashboardRequest = {
   reason: string;
 };
 
+export type BlockchainRecord = {
+  employerAddress: string;
+  workerAddress: string;
+  action: string;
+  txHash: string;
+  date: string;
+};
+
 export type WorkerDashboardResponse = {
   worker: WorkerBasicInfo;
   latestRequests: WorkerDashboardRequest[];
-  blockchainRecords: unknown[];
+  blockchainRecords: BlockchainRecord[];
+  blockchainAvailable: boolean;
 };
 
 export async function getWorkerDashboard(
