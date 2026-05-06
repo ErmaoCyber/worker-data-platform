@@ -72,6 +72,6 @@ describe("WorkerDashboardView", () => {
     expect(screen.getByText("On-chain")).toBeInTheDocument();
     expect(screen.getByText("0x7099...79C8")).toBeInTheDocument();
     expect(screen.getByText("0xf39F...2266")).toBeInTheDocument();
-    expect(screen.getByText("0x4c8201b5...64cc8")).toBeInTheDocument();
+    expect(screen.getByText("0x4c8201b5...e64cc8")).toBeInTheDocument();
   });
 });
