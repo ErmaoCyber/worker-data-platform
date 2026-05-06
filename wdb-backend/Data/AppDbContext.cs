@@ -17,9 +17,21 @@ public class AppDbContext : DbContext
     /// Represents the workers table in the database.
     /// </summary>
     public DbSet<Worker> Workers { get; set; }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<WorkerInfo>()
+            .HasMany(w => w.Permissions)
+            .WithOne()
+            .HasForeignKey(p => p.InfoId);
 
+        modelBuilder.Entity<Permission>()
+            .HasOne(p => p.Request)
+            .WithMany()
+            .HasForeignKey(p => p.RequestId);
+    }
     public DbSet<Employer> Employers { get; set; }
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<Request> Requests { get; set; }
     public DbSet<WorkerInfo> WorkerInfos { get; set; }
+
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
+using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.Models;
 
@@ -80,17 +81,47 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         }
     }
 
-
-
     // this method is to delete the whole worker info in db. but ui have not define so this method have not done.
     public Task<WorkerInfo> DeleteAsync(Guid workerId, Guid wordInfoId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public Task<List<WorkerInfo>> GetAllAsyncList(Guid workerId, CancellationToken cancellationToken = default)
+    public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var availableInfos = await _context.WorkerInfos
+      .Include(w => w.Permissions).ThenInclude(p => p.Request)
+      .Where(w => w.WorkerId == workerId &&
+                  !w.Permissions.Any(p => p.Request.EmployerId == employerId &&
+                                          (p.Status == PermissionStatus.Pending ||
+                                           p.Status == PermissionStatus.Approved)))
+      .ToListAsync(cancellationToken);
+
+        return availableInfos;
+    }
+
+    // public async Task<List<WorkerInfo>> GetRequestedWorkerInfos1(Guid workerId, Guid employerId,CancellationToken cancellationToken = default)
+    // {
+    //     var workerInfos = await _context.WorkerInfos
+    //         .Where(w => w.WorkerId == workerId &&
+    //                     w.Permissions.Any(p => p.Request.EmployerId == employerId &&
+    //                                            p.Status == PermissionStatus.Pending &&
+    //                                            p.Status == PermissionStatus.Approved))
+    //         .ToListAsync(cancellationToken);
+    //
+    //     return workerInfos; // transform list to hashset.
+    // }
+    public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
+    {
+        var requestedInfos = await _context.WorkerInfos
+            .Include(w => w.Permissions).ThenInclude(p => p.Request)
+            .Where(w => w.WorkerId == workerId &&
+                        w.Permissions.Any(p => p.Request.EmployerId == employerId &&
+                                               (p.Status == PermissionStatus.Pending ||
+                                                p.Status == PermissionStatus.Approved)))
+            .ToListAsync(cancellationToken);
+
+        return requestedInfos;
     }
 
 }

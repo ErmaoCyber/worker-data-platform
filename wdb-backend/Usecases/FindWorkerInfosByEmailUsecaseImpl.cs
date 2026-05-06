@@ -12,7 +12,7 @@ public class FindWorkerInfosByEmailUsecaseImpl : IFindWorkerInfosByEmailUsecase
         _workerInfoService = workerInfoService;
     }
 
-    public async Task<List<WorkerInfo>> FindWorkerInfosByEmail(string email, CancellationToken cancellationToken)
+    public async Task<List<WorkerInfo>> FindWorkerInfosByEmail(string email, Guid employerId,CancellationToken cancellationToken)
     {
         var worker = await _workerService.GetByEmailAsync(email, cancellationToken);
         if (worker == null)
@@ -20,8 +20,20 @@ public class FindWorkerInfosByEmailUsecaseImpl : IFindWorkerInfosByEmailUsecase
             return new List<WorkerInfo>();
         }
         else{
-        var workerinfos = await _workerInfoService.GetAllAsync(worker.Id, cancellationToken);
+        var workerinfos = await _workerInfoService.GetEffectiveWorkerInfo(worker.Id, employerId,cancellationToken);
         return workerinfos;}
+
+    }
+    public async Task<List<WorkerInfo>> FindRequestedWorkerInfosByEmail(string email, Guid employerId,CancellationToken cancellationToken)
+    {
+        var worker = await _workerService.GetByEmailAsync(email, cancellationToken);
+        if (worker == null)
+        {
+            return new List<WorkerInfo>();
+        }
+        else{
+            var workerinfos = await _workerInfoService.GetRequestedWorkerInfos(worker.Id, employerId,cancellationToken);
+            return workerinfos;}
 
     }
 }

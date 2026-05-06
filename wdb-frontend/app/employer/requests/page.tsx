@@ -10,6 +10,7 @@ export default function Page() {
     id: string;
     desc: string;
     value: string;
+    status: string; 
   };
 
   type Worker = {
@@ -24,6 +25,7 @@ export default function Page() {
   // Worker data
   const [worker, setWorker] = useState<Worker | null>(null);
   const [workerInfos, setWorkerInfos] = useState<WorkerInfo[]>([]);
+  const[workerInfosdhasRequested,setWorkerInfosdhasRequested] = useState<WorkerInfo[]>([]);
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -54,8 +56,26 @@ export default function Page() {
       }
       setWorker(worker);
 
-      var workerInfos = await FetchApi(`/api/Employer?email=${email}`);
-      setWorkerInfos(workerInfos);
+const token = localStorage.getItem('accessToken');
+    if (!token) {
+      setSentMsg('Please log in first');
+      return;
+    }
+       var workerInfos = await FetchApi(`/api/Employer?email=${email}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }})
+        setWorkerInfos (workerInfos);
+ 
+        var workerInfosdhasRequested = await FetchApi(`/api/Employer/GetRequestedWorkerInfosByEmail?email=${email}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }})
+
+      setWorkerInfosdhasRequested (workerInfosdhasRequested );
+
       setFindWorker(true);
     } catch (error) {
       setErrorMsg('Worker not found');
@@ -165,10 +185,24 @@ export default function Page() {
                 ) : (
                   <>
                     <p className="text-gray-600">
+                      The info you have requested:
+                    </p>
+                   <div className="flex flex-col gap-2 mb-4">
+                      {workerInfosdhasRequested.map((w:WorkerInfo) => (
+                        <div
+                          key={w.id}
+                          className="flex items-center justify-center border rounded-lg border-gray-300 w-full"
+                        >
+                          <p className="flex-1"> {w.desc}: {w.status}</p>
+                        </div>
+                      ))}
+                    </div>
+                  
+                    <p className="text-gray-600">
                       Please choose the info you want to request
                     </p>
                     <div className="flex flex-col gap-2 ">
-                      {workerInfos.map((w) => (
+                      {workerInfos.map((w:WorkerInfo) => (
                         <div
                           key={w.id}
                           className="flex items-center justify-center border rounded-lg border-gray-300 w-full"
@@ -213,10 +247,9 @@ export default function Page() {
           </div>
         </div>
       )}
-      {/* find worker */}
     </>
   );
   {
-    /* return总 */
+
   }
 }
