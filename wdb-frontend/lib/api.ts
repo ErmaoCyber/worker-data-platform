@@ -1,11 +1,10 @@
 // API client: centralized functions for calling the ASP.NET Core backend
 
-import { error } from 'console';
 
-const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5258';
 
 export async function FetchApi(endpoint: string, options?: RequestInit) {
-  const result = await fetch(`${BASE_API_URL}${endpoint}`, {
+  const result = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -20,7 +19,7 @@ export async function FetchApi(endpoint: string, options?: RequestInit) {
   return text ? JSON.parse(text) : null;
 
 }
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5258';
+
 
 export type UserRole = 'worker' | 'employer';
 

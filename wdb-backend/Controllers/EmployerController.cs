@@ -123,10 +123,6 @@ public class EmployerController : ControllerBase
     /// <summary>
     /// Creates a data access request for selected worker information.
     /// </summary>
-    /// <param name="email">The worker's email address.</param>
-    /// <param name="infoDesc">List of selected worker info descriptions.</param>
-    /// <param name="reason">The reason for requesting access.</param>
-    /// <param name="employerId">The ID of the employer making the request.</param>
     /// <returns>200 OK if successful, 404 if worker not found.</returns>
     [Authorize]
     [HttpPost("AccessRequests")]
