@@ -44,7 +44,7 @@ public class Permission
     /// Timestamp of when the permission expires.
     /// </summary>
     [Column("expiry_date")]
-    public DateTime ExpiryDate { get; set; }
+    public DateTime? ExpiryDate { get; set; }
 
     /// <summary>
     /// The permission's status such as pending/approved/rejected.

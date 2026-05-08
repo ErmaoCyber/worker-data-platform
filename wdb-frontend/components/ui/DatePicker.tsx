@@ -4,14 +4,15 @@ interface DatePickerProps {
     label: string
     value: Date | null
     onChange: (date: Date | null) => void
-    required?: boolean
+    // required?: boolean
 }
 
-export default function DatePicker({ label, value, onChange, required }: DatePickerProps) {
+export default function DatePicker({ label, value, onChange}: DatePickerProps) {
     return (
         <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
-                {label} {required && <span className="text-red-500">*</span>}
+                {label} 
+                {/* {required && <span className="text-red-500">*</span>} */}
             </label>
             <input
                 type="date"

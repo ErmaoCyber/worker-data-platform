@@ -27,10 +27,11 @@ public class PermissionServiceImpl:IPermissionService
     /// Changes permission status:
     /// 0 = Pending, 1 = Approve, 2 = Reject
     /// </param>
+    /// <param name="expiryDate"> The expiry date of permisions </param>
     /// <param name="cancellationToken">Token to cancel async operation</param>
     /// <returns>Returns permission item with updated status and timestamp</returns>
     /// <exception cref="KeyNotFoundException"></exception>
-    public async Task<Permission> UpdateAsync(Guid permissionId, int status, CancellationToken cancellationToken = default)
+    public async Task<Permission> UpdateAsync(Guid permissionId, int status, DateTime? expiryDate = null, CancellationToken cancellationToken = default)
     {
         var permission = await _permissionRepository.GetOneAsync(permissionId, cancellationToken)??throw new KeyNotFoundException();
         if (permission.Status != PermissionStatus.Pending)
@@ -40,6 +41,7 @@ public class PermissionServiceImpl:IPermissionService
 
         permission.Status = (PermissionStatus)status;
         permission.LastUpdatedAt = DateTime.UtcNow;
+        permission.ExpiryDate = expiryDate;
         var result = await _permissionRepository.UpdateAsync(permissionId, permission, cancellationToken);
         return result;
     }
