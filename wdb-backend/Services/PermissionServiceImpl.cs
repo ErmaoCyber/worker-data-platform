@@ -24,10 +24,10 @@ public class PermissionServiceImpl:IPermissionService
     /// </summary>
     /// <param name="permissionId">The ID of given permission to update</param>
     /// <param name="status">
-    /// <param name="expiryDate">
     /// Changes permission status:
     /// 0 = Pending, 1 = Approve, 2 = Reject
     /// </param>
+    /// <param name="expiryDate"> The expiry date of permisions </param>
     /// <param name="cancellationToken">Token to cancel async operation</param>
     /// <returns>Returns permission item with updated status and timestamp</returns>
     /// <exception cref="KeyNotFoundException"></exception>
