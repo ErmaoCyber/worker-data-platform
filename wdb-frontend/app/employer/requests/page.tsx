@@ -184,6 +184,7 @@ const token = localStorage.getItem('accessToken');
                   </>
                 ) : (
                   <>
+                  {workerInfosdhasRequested.length>0 &&(<>
                     <p className="text-gray-600">
                       The info you have requested:
                     </p>
@@ -196,7 +197,7 @@ const token = localStorage.getItem('accessToken');
                           <p className="flex-1"> {w.desc}: {w.status}</p>
                         </div>
                       ))}
-                    </div>
+                    </div></>)}
                   
                     <p className="text-gray-600">
                       Please choose the info you want to request
