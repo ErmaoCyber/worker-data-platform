@@ -194,7 +194,7 @@ const token = localStorage.getItem('accessToken');
                           key={w.id}
                           className="flex items-center justify-center border rounded-lg border-gray-300 w-full"
                         >
-                          <p className="flex-1"> {w.desc}: {w.status}</p>
+                          <p className="flex-1 text-black"> {w.desc}: {w.status}</p>
                         </div>
                       ))}
                     </div></>)}
@@ -214,7 +214,7 @@ const token = localStorage.getItem('accessToken');
                             checked={isSelected.has(w.id)}
                             onChange={() => toggle(w.id)}
                           />
-                          <p className="flex-1"> {w.desc}</p>
+                          <p className="flex-1 text-black"> {w.desc}</p>
                         </div>
                       ))}
                     </div>
