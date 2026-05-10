@@ -9,12 +9,13 @@ using System.Text.Json.Serialization;
 using wdb_backend.Abstractions;
 using wdb_backend.Services;
 using wdb_backend.Models;
+using wdb_backend.Notification;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================
-// service 
+// service
 // ============================
 
 // OpenAPI / Swagger
@@ -34,11 +35,12 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
-// infrastructure 
+// infrastructure
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // application services
@@ -68,6 +70,16 @@ builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
 // Services
 builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
 
+// register SignalR
+builder.Services.AddSignalR();
+
+// register MediatR (scan current app and find out all Handlers)
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+builder.Services.AddScoped<INotificationRepository, NotificationRepoImpl>();
+builder.Services.AddScoped<INotificationService, NotificationServiceImpl>();
+
 var app = builder.Build();
 
 // ============================
@@ -85,6 +97,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationsHub>("/hub/notificationsHub");  // map notification hub
 app.MapOpenApi();
 
 app.Run();
