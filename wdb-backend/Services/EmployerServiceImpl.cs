@@ -3,12 +3,7 @@ using wdb_backend.Models;
 
 namespace wdb_backend.Services;
 
-<<<<<<< HEAD:wdb-backend/Services/EmployerServicerImpl.cs
-public class EmployerServicerImpl : IEmployerService
-
-=======
 public class EmployerServiceImpl : IEmployerService
->>>>>>> origin:wdb-backend/Services/EmployerServiceImpl.cs
 {
     private readonly IEmployerRepository _employerRepository;
 

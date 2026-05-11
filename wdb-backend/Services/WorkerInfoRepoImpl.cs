@@ -87,4 +87,41 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         throw new NotImplementedException();
     }
 
+    public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
+    {
+        var availableInfos = await _context.WorkerInfos
+      .Include(w => w.Permissions).ThenInclude(p => p.Request)
+      .Where(w => w.WorkerId == workerId &&
+                  !w.Permissions.Any(p => p.Request.EmployerId == employerId &&
+                                          (p.Status == PermissionStatus.Pending ||
+                                           p.Status == PermissionStatus.Approved)))
+      .ToListAsync(cancellationToken);
+
+        return availableInfos;
+    }
+
+    // public async Task<List<WorkerInfo>> GetRequestedWorkerInfos1(Guid workerId, Guid employerId,CancellationToken cancellationToken = default)
+    // {
+    //     var workerInfos = await _context.WorkerInfos
+    //         .Where(w => w.WorkerId == workerId &&
+    //                     w.Permissions.Any(p => p.Request.EmployerId == employerId &&
+    //                                            p.Status == PermissionStatus.Pending &&
+    //                                            p.Status == PermissionStatus.Approved))
+    //         .ToListAsync(cancellationToken);
+    //
+    //     return workerInfos; // transform list to hashset.
+    // }
+    public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
+    {
+        var requestedInfos = await _context.WorkerInfos
+            .Include(w => w.Permissions).ThenInclude(p => p.Request)
+            .Where(w => w.WorkerId == workerId &&
+                        w.Permissions.Any(p => p.Request.EmployerId == employerId &&
+                                               (p.Status == PermissionStatus.Pending ||
+                                                p.Status == PermissionStatus.Approved)))
+            .ToListAsync(cancellationToken);
+
+        return requestedInfos;
+    }
+
 }
