@@ -1,16 +1,43 @@
 services:
+  hardhat-node:
+    build:
+      context: ./wdb-blockchain
+    container_name: wdb-hardhat-node
+    ports:
+      - "8545:8545"
+    command: npx hardhat node --hostname 0.0.0.0
+    networks:
+      - wdb-network
+
   wdb-backend:
-    build: ./wdb-backend
+    build:
+      context: ./wdb-backend
     ports:
       - "5258:5258"
+    depends_on:
+      - hardhat-node
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5258
       - ConnectionStrings__DefaultConnection=${CONNECTION_STRING}
-    
+      - Blockchain__RpcUrl=http://hardhat-node:8545
+      - Blockchain__ContractAddress=${BLOCKCHAIN_CONTRACT_ADDRESS}
+      - Blockchain__AbiPath=/app/blockchain-artifacts/contracts/TransactionLog.sol/TransactionLog.json
+    volumes:
+      - ./wdb-blockchain/artifacts:/app/blockchain-artifacts:ro
+    networks:
+      - wdb-network
+
   wdb-frontend:
-    build: ./wdb-frontend
+    build:
+      context: ./wdb-frontend
     ports:
       - "3000:3000"
     depends_on:
       - wdb-backend
+    networks:
+      - wdb-network
+
+networks:
+  wdb-network:
+    driver: bridge

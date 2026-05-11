@@ -52,5 +52,6 @@ public class Permission
     [Column("status")]
     public required PermissionStatus Status { get; set; }
 
-}
 
+    public Request Request { get; set; }
+}

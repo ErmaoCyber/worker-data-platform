@@ -4,9 +4,14 @@ using System.Text.Json.Serialization;
 using wdb_backend.Data;
 using wdb_backend.Abstractions;
 using wdb_backend.Services;
+using wdb_backend.Usecases;
 using wdb_backend.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ============================
+// service
+// ============================
 
 // OpenAPI / Swagger
 builder.Services.AddOpenApi();
@@ -23,14 +28,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
-// Infrastructure
+// infrastructure 
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// application services
+builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
+builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
+builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
+
 
 // DbContext
 builder.Services.AddDbContextPool<AppDbContext>(opt =>
@@ -41,19 +52,23 @@ builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// Services
-builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
-builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
-builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
-builder.Services.AddScoped<IWorkerInfoRepository, WorkerInfoRepoImpl>();
 builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
 builder.Services.AddScoped<IPermissionRepository, PermissionRepoImpl>();
 builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
 builder.Services.AddScoped<IRequestRepository, RequestRepoImpl>();
+builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
+builder.Services.AddScoped<IWorkerInfoRepository, WorkerInfoRepoImpl>();
 builder.Services.AddScoped<IEmployerService, EmployerServicerImpl>();
 builder.Services.AddScoped<IEmployerRepository, EmployerRepoImpl>();
+builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
+// Services
+builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
 
 var app = builder.Build();
+
+// ============================
+// middleware the order matters!
+// ============================
 
 if (app.Environment.IsDevelopment())
 {

@@ -1,60 +1,37 @@
 import { ethers } from "hardhat";
-import * as fs from "fs";
-import * as path from "path";
 
 async function main() {
-    console.log("Deploying TransactionLog contract..");
+  console.log("Deploying TransactionLog contract...");
 
-    const [deployer] = await ethers.getSigners();
-    console.log("Deloying with account:", deployer.address);
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying with account:", deployer.address);
 
-    //deploying contract
+  const TransactionLog = await ethers.getContractFactory("TransactionLog");
 
-    // get compiled contract
-    const TransactionLog = await ethers.getContractFactory("TransactionLog");
+  const contract = await TransactionLog.deploy();
+  await contract.waitForDeployment();
 
-    //deploy to the node
-    const contract = await TransactionLog.deploy();
-    await contract.waitForDeployment();
+  const address = await contract.getAddress();
 
-    const address = await contract.getAddress();
-    console.log("TransactionLog deployed to:", address);
+  console.log("");
+  console.log("TransactionLog deployed successfully.");
+  console.log("Contract address:", address);
 
-    //appsettings.json location
-    const appSettingsPath = path.join(
-        process.cwd(),
-        "../wdb-backend/appsettings.json"
-    );
+  console.log("");
+  console.log("For Docker Compose:");
+  console.log("Add or update this value in your root .env file:");
+  console.log(`BLOCKCHAIN_CONTRACT_ADDRESS=${address}`);
 
-    //check if appsettings file exist
-    if (!fs.existsSync(appSettingsPath)) {
-        console.error("appsettings.json in wdb-backend not found at:", appSettingsPath);
-        process.exit(1);
-    }
+  console.log("");
+  console.log("For local backend run:");
+  console.log("Add or update this value in wdb-backend/appsettings.Development.json:");
+  console.log(`"ContractAddress": "${address}"`);
 
-    // read current appsettings.json
-    const appSettings = JSON.parse(
-        fs.readFileSync(appSettingsPath, "utf8")
-    );
-
-
-
-    //update contract address
-    appSettings.Blockchain.ContractAddress = address;
-    appSettings.Blockchain.AbiPath = "../wdb-blockchain/artifacts/contracts/TransactionLog.sol/TransactionLog.json";
-
-    //write to appSettings.json
-    fs.writeFileSync(
-        appSettingsPath,
-        JSON.stringify(appSettings, null, 2)
-    );
-
-    console.log("appsettings.json updated");
-    console.log("New contractAdress:", address);
-    console.log("Restart your backend to apply changes");
+  console.log("");
+  console.log("Then restart your backend.");
 }
 
 main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
+  console.error(error);
+  process.exitCode = 1;
 });

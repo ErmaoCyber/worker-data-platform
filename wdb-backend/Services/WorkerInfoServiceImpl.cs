@@ -64,9 +64,9 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
     }
 
     /// <summary>
-    /// This method is to update an existing worker info record in the database for a specific worker. 
-    /// It takes the worker's unique identifier (workerId) and the updated worker info object as parameters. 
-    /// The method checks if a record with the same workerId and description already exists in the database. 
+    /// This method is to update an existing worker info record in the database for a specific worker.
+    /// It takes the worker's unique identifier (workerId) and the updated worker info object as parameters.
+    /// The method checks if a record with the same workerId and description already exists in the database.
     /// If it exists, it updates the existing record with the new information; if it does not exist, it adds a new record to the database. Finally, it returns the updated or newly created worker info object.
     /// </summary>
     /// <param name="workerId"></param>
@@ -79,7 +79,7 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
     }
 
     /// <summary>
-    /// 
+    ///
     /// This method is to delete a worker info record from the database for a specific worker,but have not implemented yet.
     /// </summary>
     /// <param name="workerId"></param>

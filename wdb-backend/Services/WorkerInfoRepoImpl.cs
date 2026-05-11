@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
+using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.Models;
 
@@ -79,8 +80,6 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
             return workerInfo;
         }
     }
-
-
 
     // this method is to delete the whole worker info in db. but ui have not define so this method have not done.
     public Task<WorkerInfo> DeleteAsync(Guid workerId, Guid wordInfoId, CancellationToken cancellationToken = default)

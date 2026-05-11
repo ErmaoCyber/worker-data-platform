@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FetchApi } from '../../lib/api';
 import ConfirmModal from "./ConfirmModal";
 
@@ -16,7 +16,8 @@ export interface Row {
     date: string;
     fields: Field[];
     reason: string;
-    onComplete: (id: string) => void;
+    onComplete: () => void;
+    expiryDate: string;
 }
 
 
@@ -25,6 +26,9 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
     const [errorMsg, setErrorMsg] = useState('');
     const [pendingAction, setPendingAction] = useState("");
     const [showModal, setShowModal] = useState(false);
+    const [showExpiry, setShowExpiry] = useState(false);
+    const [expiryDate, setExpiryDate] = useState("");
+
 
     const toggleField = (label: string) => {
         setCheckedFields((prev) =>
@@ -32,7 +36,12 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
         );
     };
 
+    const onExpiry = (date: string) => {
+        setExpiryDate(date);
+    };
 
+    // useEffect(() => {console.log("expiryDate:", expiryDate, typeof expiryDate)}
+    // )
 
     async function changePermission(status: "approve" | "reject") {
         const checkedIds = checkedFields.filter((f) => f.checked).map((f) => f.id);
@@ -44,7 +53,7 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
                     }
                     ))
             );
-            onComplete(id);
+            onComplete();
         } catch (error) {
             setErrorMsg(`${error}`)
         }
@@ -85,6 +94,7 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
                     onClick={() => {
                         setShowModal(true);
                         setPendingAction("approve");
+                        setShowExpiry(true);
                     }}
                 >✔</button>
                 <button className="bg-red-500 hover:bg-red-600 text-white rounded-md px-4 py-2 text-base disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
@@ -92,7 +102,9 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
                     onClick={() => {
                         setShowModal(true);
                         setPendingAction("reject")
+                        setShowExpiry(false);
                     }}
+
                 >✖</button>
                 {errorMsg && <p className="text-sm text-red-500">{errorMsg}</p>}
 
@@ -112,6 +124,8 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
                             setShowModal(false);
                             setPendingAction("");
                         }}
+                        showExpiry={showExpiry}
+                        choseExpiry={onExpiry}
                     />
                 )}
             </div>
