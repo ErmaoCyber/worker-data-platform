@@ -1,7 +1,5 @@
 using System.ComponentModel;
-using System.ComponentModel;
 using Microsoft.EntityFrameworkCore;
-using Nethereum.Model;
 using Nethereum.Model;
 using wdb_backend.Abstractions;
 using wdb_backend.Data;
