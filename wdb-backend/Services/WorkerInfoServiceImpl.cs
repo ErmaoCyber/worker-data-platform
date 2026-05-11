@@ -92,4 +92,17 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
     {
         throw new NotImplementedException();
     }
+
+    public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
+    {
+        var workinfos = await _workerInfoRepo.GetEffectiveWorkerInfo(workerId, employerId, default);
+        return workinfos;
+    }
+
+    public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
+    {
+        var workinfos = await _workerInfoRepo.GetRequestedWorkerInfos(workerId, employerId, default);
+        return workinfos;
+    }
+
 }
