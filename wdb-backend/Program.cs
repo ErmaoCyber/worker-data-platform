@@ -5,6 +5,7 @@ using wdb_backend.Abstractions;
 using wdb_backend.Data;
 using wdb_backend.Models;
 using wdb_backend.Services;
+using wdb_backend.Usecases;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +28,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -35,6 +36,31 @@ builder.Services.AddCors(options =>
 
 // Infrastructure
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Core services
+builder.Services.AddScoped<IWorkerService, WorkerServiceImpl>();
+builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
+builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
+builder.Services.AddScoped<IEmployerService, EmployerServiceImpl>();
+builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
+
+// Use cases
+builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
+builder.Services.AddScoped<IFindWorkerInfosByEmailUsecase, FindWorkerInfosByEmailUsecaseImpl>();
+
+// Repositories
+builder.Services.AddScoped<IWorkerRepository, WorkerRepoImpl>();
+builder.Services.AddScoped<IRequestRepository, RequestRepoImpl>();
+builder.Services.AddScoped<IPermissionRepository, PermissionRepoImpl>();
+builder.Services.AddScoped<IWorkerInfoRepository, WorkerInfoRepoImpl>();
+builder.Services.AddScoped<IEmployerRepository, EmployerRepoImpl>();
+
+// Dashboard services
+builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
+builder.Services.AddScoped<IEmployerDashboardService, EmployerDashboardServiceImpl>();
+
+// Blockchain service
+builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
 
 // DbContext
 builder.Services.AddDbContextPool<AppDbContext>(opt =>
@@ -44,24 +70,6 @@ builder.Services.AddDbContextPool<AppDbContext>(opt =>
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
-// Application services
-builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
-builder.Services.AddScoped<IPermissionRepository, PermissionRepoImpl>();
-
-builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
-builder.Services.AddScoped<IRequestRepository, RequestRepoImpl>();
-
-builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
-builder.Services.AddScoped<IWorkerInfoRepository, WorkerInfoRepoImpl>();
-
-builder.Services.AddScoped<IEmployerService, EmployerServicerImpl>();
-builder.Services.AddScoped<IEmployerRepository, EmployerRepoImpl>();
-
-builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
-builder.Services.AddScoped<IEmployerDashboardService, EmployerDashboardServiceImpl>();
-
-builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
 
 var app = builder.Build();
 

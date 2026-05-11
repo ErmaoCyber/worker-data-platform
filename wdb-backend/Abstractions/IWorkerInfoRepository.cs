@@ -22,4 +22,9 @@ public interface IWorkerInfoRepository
 
     // delete the whole worker info by worker info id，have not start since ui have not define.
     //Task DeleteAsync(Guid workerId, CancellationToken cancellationToken = default);
+
+    Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken);
+    Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken);
+
+
 }

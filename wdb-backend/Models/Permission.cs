@@ -50,7 +50,8 @@ public class Permission
     /// The permission's status such as pending/approved/rejected.
     /// </summary>
     [Column("status")]
-     public required PermissionStatus Status { get; set; }
+    public required PermissionStatus Status { get; set; }
 
+
+    public Request Request { get; set; }
 }
-
