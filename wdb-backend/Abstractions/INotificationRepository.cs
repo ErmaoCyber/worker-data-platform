@@ -1,3 +1,5 @@
+using wdb_backend.DTOs;
+
 namespace wdb_backend.Abstractions;
 using wdb_backend.Models;
 
@@ -18,4 +20,6 @@ public interface INotificationRepository
     // get all the read notification based on userId
     Task<List<Notification>> GetAllReadByWorkerIdAsync(Guid workId, CancellationToken ct = default);
     Task<Notification?> GetByIdAsync(Guid notificationId, CancellationToken ct);
+    // customized method for showing the readable data from the frontend
+    Task<NotificationFormat> FormatNotification(NotificationEvent e, CancellationToken ct = default);
 }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Data;
+using wdb_backend.DTOs;
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
@@ -49,5 +50,22 @@ public class NotificationRepoImpl : INotificationRepository
     public async Task<Models.Notification?> GetByIdAsync(Guid notificationId, CancellationToken ct)
     {
         return await _dbContext.Notifications.FirstOrDefaultAsync(notification => notification.Id == notificationId, ct);
+    }
+
+    // customized method for showing the readable data from the frontend
+    public async Task<NotificationFormat> FormatNotification(NotificationEvent e, CancellationToken ct)
+    {
+        var employerName = _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == e.EmployerId, ct).Result?.Name;
+        var workerName = _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == e.WorkerId, ct).Result?.Name;
+        var workerInfoDesc = _dbContext.WorkerInfos
+            .FirstOrDefaultAsync(workerInfo => workerInfo.Id == e.WorkerInfoId, ct).Result?.Desc;
+        return new NotificationFormat
+        (
+            employerName,
+            workerName,
+            e.Type.ToString(),
+            workerInfoDesc,
+            e.CreateAt
+        );
     }
 }

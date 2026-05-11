@@ -30,7 +30,11 @@ public class NotificationClientsHandler : INotificationHandler<NotificationEvent
             IsRead = false
         }, ct);
 
+        // format the notification
+        var format = await _notificationRepo.FormatNotification(e, ct);
+
         // send to specific worker only - to the method of NotificationInfo
-        await _hubContext.Clients.Group(e.WorkerId.ToString()).SendAsync("NotificationInfo", $"{e.EmployerId}-{e.WorkerId}-{e.WorkerInfoId}-{e.Type}-{e.CreateAt}", ct);
+        // await _hubContext.Clients.Group(e.WorkerId.ToString()).SendAsync("NotificationInfo", $"{e.EmployerId}-{e.WorkerId}-{e.WorkerInfoId}-{e.Type}-{e.CreateAt}", ct);
+        await _hubContext.Clients.Group(e.WorkerId.ToString()).SendAsync("NotificationInfo", $"{format.EmployerName} {format.NotificationType.ToLower()}ed your {format.WorkInfoDesc} at {format.NotificationTime}", ct);
     }
 }

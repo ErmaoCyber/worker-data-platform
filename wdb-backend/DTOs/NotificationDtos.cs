@@ -8,3 +8,6 @@ public record NotificationInfo(Guid EmployerId, Guid WorkerId, Guid WorkerInfoId
 public record NotificationCommand(Guid EmployerId, Guid WorkerId, Guid WorkerInfoId, NotificationType Type) : IRequest;
 
 public record NotificationEvent(Guid EmployerId, Guid WorkerId, Guid WorkerInfoId, NotificationType Type, DateTime CreateAt) : INotification;
+
+// dto to hold the readable info
+public record NotificationFormat(string? EmployerName, string? WorkerName, string NotificationType, string? WorkInfoDesc, DateTime NotificationTime);
