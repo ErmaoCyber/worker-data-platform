@@ -97,7 +97,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<NotificationsHub>("/hub/notificationsHub");  // map notification hub
+app.MapHub<NotificationsHub>("/hubs/notifications");  // map notification hub
 app.MapOpenApi();
 
 app.Run();

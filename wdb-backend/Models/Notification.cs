@@ -23,6 +23,6 @@ public class Notification
     [Column("is_read")]
     public bool IsRead { get; set; }
 
-    [Column("create_at")]
+    [Column("created_at")]
     public DateTime CreateAt { get; set; }
 }

@@ -1,4 +1,3 @@
-
 /* Employer dashboard: overview of request status and activity
 * @author:
 * @since:
