@@ -10,7 +10,7 @@ public class RequestRepoImpl : IRequestRepository
 {
     private readonly AppDbContext _dbContext;
 
-    public RequestRepoImpl (AppDbContext dbContext)
+    public RequestRepoImpl(AppDbContext dbContext)
     {
         _dbContext = dbContext;
     }
@@ -37,7 +37,7 @@ public class RequestRepoImpl : IRequestRepository
 
     public async Task<Request> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
     {
-        var result = await _dbContext.Requests.FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken)?? throw new KeyNotFoundException();
+        var result = await _dbContext.Requests.FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken) ?? throw new KeyNotFoundException();
         return result;
     }
 

@@ -47,3 +47,4 @@ public class EmployerServiceImpl : IEmployerService
         return await _employerRepository.GetDistinctEmployers(cancellationToken);
     }
 }
+

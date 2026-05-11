@@ -19,7 +19,7 @@ public class WorkerRepoImpl : IWorkerRepository
         return await _context.Workers.AnyAsync(worker => worker.Email.Equals(email), cancellationToken);
     }
 
-      public async Task<Worker> GetByEmailAsync(string email, CancellationToken cancellationToken)
+    public async Task<Worker> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var resultWorker = await _context.Workers.FirstOrDefaultAsync(w => w.Email == email, cancellationToken);
         if (resultWorker == null)
