@@ -22,7 +22,7 @@ public class PermissionController : ControllerBase
     {
         try
         {
-            var update = await _permissionService.UpdateAsync(permissionId, 1, cancellationToken);
+            var update = await _permissionService.UpdateAsync(permissionId, 1, expiryDate, cancellationToken);
             return Ok(update);
         }
         catch (KeyNotFoundException)
@@ -41,7 +41,7 @@ public class PermissionController : ControllerBase
     {
         try
         {
-            var update = await _permissionService.UpdateAsync(permissionId, 2, cancellationToken);
+            var update = await _permissionService.UpdateAsync(permissionId, 2, null, cancellationToken);
             return Ok(update);
         }
         catch (KeyNotFoundException)
