@@ -33,7 +33,7 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
 
     public async Task<List<WorkerInfo>> GetAllAsync(Guid workerId, CancellationToken cancellationToken = default)
     {
-        var resultInfos = await _workerInfoRepo.GetAllAsync(workerId,default)??throw new KeyNotFoundException();
+        var resultInfos = await _workerInfoRepo.GetAllAsync(workerId, default) ?? throw new KeyNotFoundException();
         return resultInfos;
     }
 
@@ -95,13 +95,13 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
 
     public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
     {
-        var workinfos = await _workerInfoRepo.GetEffectiveWorkerInfo(workerId, employerId,default);
+        var workinfos = await _workerInfoRepo.GetEffectiveWorkerInfo(workerId, employerId, default);
         return workinfos;
     }
 
     public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
     {
-        var workinfos = await _workerInfoRepo.GetRequestedWorkerInfos(workerId, employerId,default);
+        var workinfos = await _workerInfoRepo.GetRequestedWorkerInfos(workerId, employerId, default);
         return workinfos;
     }
 

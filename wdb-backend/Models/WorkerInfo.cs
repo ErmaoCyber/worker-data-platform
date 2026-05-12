@@ -44,7 +44,6 @@ public class WorkerInfo
     /// </summary>
     [Column("value")]
     public required string Value { get; set; }
-
     public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
 }
 

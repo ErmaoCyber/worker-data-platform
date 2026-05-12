@@ -1,5 +1,5 @@
 'use client'
-import TopBar from '@/components/ui/TopBar'
+import TopBar from '@/component/ui/TopBar'
 import UserInfoCard from './components/UserInfoCard'
 import { useEffect, useState } from 'react'
 import { WorkerInfoItem } from './type'

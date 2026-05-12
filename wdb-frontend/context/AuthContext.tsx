@@ -2,6 +2,7 @@
 // 改这一行
 import { createContext, useState, ReactNode, useEffect, useContext } from 'react';
 
+
 // define the type for the authentication context
 type AuthContextType = {
     token: string | null;
@@ -9,7 +10,7 @@ type AuthContextType = {
     userName: string | null;
     email: string | null;
     userId: string | null;
-    login: (token: string, userName: string, email: string, userId: string) => void;
+    login: (token: string, userName: string, email: string, userId: string, role: string) => void;
     logout: () => void;
 };
 
@@ -47,15 +48,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
     // define the login and logout functions to update the authentication state
-    const login = (token: string, userName: string, email: string, userId: string) => {
+    const login = (token: string, userName: string, email: string, userId: string, role: string) => {
         setToken(token);
         setUserId(userId);
         setUserName(userName);
         setEmail(email);
+        setRole(role);
         localStorage.setItem('accessToken', token);
         localStorage.setItem('userName', userName);
         localStorage.setItem('email', email);
         localStorage.setItem('userId', userId);
+        localStorage.setItem('role', role);
     };
     // the logout function clarifies the authentication state and removes the relevant items form localstorage
     const logout = () => {

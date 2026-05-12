@@ -27,7 +27,8 @@ export default function LoginPage() {
         return;
       }
 
-      authLogin(res.data.accessToken, res.data.userName, res.data.email, res.data.userId); // update the auth context with the login data
+      authLogin(res.data.accessToken, res.data.userName, res.data.email, res.data.userId, role); // update the auth context with the login data
+      console.log('login success, redirecting to:', `/${role}/dashboard`);
       router.push(`/${role}/dashboard`);
     } catch {
       setError('Network error. Please try again.');
