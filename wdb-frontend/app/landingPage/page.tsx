@@ -1,6 +1,7 @@
 
 'use client'
 
+
 import Hero from "./components/Hero";
 import Gallery from "./components/Gallery";
 import HowItWorks from "./components/HowItWorks";

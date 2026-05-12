@@ -17,46 +17,61 @@ const faqs = [
 ];
 
 export default function FAQ() {
-    const [openIndex, setOpenIndex] = useState<number | null>(0);
+    const [openIndex, setOpenIndex] = useState<number | null>(null);
 
     const toggle = (index: number) => {
         setOpenIndex(openIndex === index ? null : index);
     };
 
     return (
-        <section className=" px-10 flex flex-col items-center gap-4 w-full">
+        <section className="px-10 flex flex-col items-center gap-4 w-full">
 
-            {/* Section heading */}
-            <h2 className="text-[44px] font-extrabold text-gray-800 mb-6">
-                Frequently Asked Questions
+            <h2 className="text-[44px] font-extrabold text-gray-800 mb-6 text-center">
+                Frequently <br /> Asked Questions
             </h2>
 
             <div className="flex flex-col gap-4 w-full max-w-4xl">
-                {faqs.map((faq, index) => (
-                    <div
-                        key={index}
-                        className="rounded-2xl border border-gray-300 bg-white overflow-hidden"
-                    >
-                        {/* Question row */}
-                        <button
-                            onClick={() => toggle(index)}
-                            className="w-full flex items-center justify-between px-8 py-5 text-left"
+                {faqs.map((faq, index) => {
+                    const isClicked = openIndex === index;
+                    return (
+                        <div
+                            key={index}
+                            className={`group w-full rounded-2xl border overflow-hidden transition-colors duration-300 ${isClicked
+                                ? "bg-gray-800 border-gray-700"
+                                : "bg-white border-gray-300 hover:bg-gray-800 hover:border-gray-700"
+                                }`}
                         >
-                            <span className="font-bold text-gray-700 text-[15px]">
-                                {faq.question}
-                            </span>
-                        </button>
+                            <button
+                                onClick={() => toggle(index)}
+                                className="w-full flex items-center justify-between px-8 py-5 text-left"
+                            >
+                                <span className={`font-bold text-[15px] transition-colors duration-300 ${isClicked
+                                    ? "text-white"
+                                    : "text-gray-700 group-hover:text-white"
+                                    }`}>
+                                    {faq.question}
+                                </span>
+                                <span className={`text-xl ml-4 shrink-0 transition-colors duration-300 ${isClicked
+                                    ? "text-white"
+                                    : "text-gray-400 group-hover:text-white"
+                                    }`}>
+                                    {isClicked ? "−" : "+"}
+                                </span>
+                            </button>
 
-                        {/* Answer row*/}
-                        {openIndex === index && (
-                            <div className="px-8 pb-6">
-                                <p className="text-gray-500 text-sm leading-relaxed text-left">
+                            {/* Shows on click or on hover*/}
+                            <div className={`px-8 transition-all duration-300 ${isClicked
+                                ? "max-h-96 pb-6 opacity-100"
+                                : "max-h-0 pb-0 opacity-0 group-hover:max-h-96 group-hover:pb-6 group-hover:opacity-100"
+                                }`}>
+                                <p className="text-gray-300 text-sm leading-relaxed text-left">
                                     {faq.answer}
                                 </p>
                             </div>
-                        )}
-                    </div>
-                ))}
+
+                        </div>
+                    );
+                })}
             </div>
 
         </section>

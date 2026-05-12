@@ -83,8 +83,8 @@ export default function Gallery() {
                     />
                 ))}
 
-                {/* Overlay — only on dark backgrounds */}
-                {dark && <div className="absolute inset-0 bg-black/60 transition-opacity duration-500" />}
+                {/* Overlay to make text appear clearer — only on dark backgrounds */}
+                {dark && <div className="absolute inset-0 bg-black/70 transition-opacity duration-500" />}
 
                 {/* Left arrow */}
                 <button
@@ -99,13 +99,16 @@ export default function Gallery() {
 
                 {/* Slide content */}
                 {/* Problem */}
-                <span className="absolute top-24 left-0 z-10 text-2xl font-extrabold px-8 py-8 rounded-r-3xl bg-yellow-200 text-gray-700">
-                    {slide.problem}
+                <span className={`absolute top-24 left-0 z-10 text-2xl font-extrabold px-8 py-4 rounded-r-3xl flex items-center gap-3 ${dark ? "text-white" : "text-gray-700"} `}>
+                    <span className="flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-black shrink-0">
+                        !
+                    </span>
+                    <span>{slide.problem}</span>
                 </span>
                 {/* Solutions*/}
                 <div className="relative z-10 flex flex-1 flex-col justify-between h-full py-8 px-10">
                     <div className="absolute right-24 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-2 text-right max-w-sm">
-                        <h2 className={`text-5xl font-bold ${dark ? "text-white" : "text-gray-800"}`}>
+                        <h2 className={`text-5xl font-bold ${dark ? "text-white" : "text-gray-700"}`}>
                             {slide.solutionTitle}
                         </h2>
                         <p className={`text-sm leading-relaxed ${dark ? "text-gray-200" : "text-gray-600"}`}>
