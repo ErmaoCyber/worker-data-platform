@@ -4,6 +4,9 @@ import Image from "next/image";
 import CompanyLogo from "./../assets/CompanyLogo";
 import heroBackground from "./../assets/heroBackground.png";
 import howitWorks from "./../assets/howitWorks.png";
+import blockchainLogo from "./../assets/blockchainLogo.png";
+import Link from "next/link";
+
 
 export default function LandingPage() {
     return (
@@ -42,12 +45,23 @@ export default function LandingPage() {
                             Enhanced with blockchain technology.
                         </p>
                         <div className="flex items-center gap-3 mt-2">
-                            <button className="bg-gray-200 text-gray-700 font-bold text-sm tracking-wide px-7 py-3.5 rounded-2xl hover:opacity-85 transition-opacity">
-                                Get Started
-                            </button>
+                            <Link href="/login">
+                                <button className="cursor-pointer bg-gray-200 text-gray-700 font-bold text-sm tracking-wide px-7 py-3.5 rounded-2xl hover:opacity-85 transition-opacity">
+                                    Get Started
+                                </button>
+                            </Link>
                         </div>
+
                     </div>
                 </section>
+                <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center">
+                    <Image
+                        src={blockchainLogo}
+                        alt=""
+                        width={160}
+                        priority
+                    />
+                </div>
             </div>
 
             {/* ── Section 2 ── */}
