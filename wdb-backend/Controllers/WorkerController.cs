@@ -79,7 +79,8 @@ public class WorkerController : ControllerBase
         public required string Id { get; set; }
         public required string Company { get; set; }
         public required string Date { get; set; }
-        public required List<FieldResponse> Fields { get; set; }
+        public required List<FieldResponse> listedInfo { get; set; }
+        public required List<FieldResponse> unlistedInfo { get; set; }
         public required string Reason { get; set; }
     }
 
@@ -109,23 +110,36 @@ public class WorkerController : ControllerBase
 
             employerMap.TryGetValue(request.EmployerId, out var employer);
 
-            var workerInfos = new List<FieldResponse>();
+            var listedInfos = new List<FieldResponse>();
+            var unlistedInfos = new List<FieldResponse>();
             foreach (var p in group)
             {
                 var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
-                workerInfos.Add(new FieldResponse
+                if (info?.Value != null) {
+                    listedInfos.Add(new FieldResponse
+                    {
+                        Id = p.Id.ToString(),
+                        Label = info.Desc ?? "Unknown",
+                        Checked = false
+                    });
+                } else if (info?.Value == null)
                 {
-                    Id = p.Id.ToString(),
-                    Label = info?.Desc ?? "Unknown",
-                    Checked = false
-                });
+                    unlistedInfos.Add(new FieldResponse
+                    {
+                        Id = p.Id.ToString(),
+                        Label = info?.Desc ?? "Unknown",
+                        Checked = false
+                    });
+                }
+                
             }
             rows.Add(new RequestRowResponse
             {
                 Id = request.Id.ToString(),
                 Company = employer?.Name.ToString() ?? "Unknown",
                 Date = request.CreatedAt.ToString("dd.MM.yyyy hh:mm tt"),
-                Fields = workerInfos,
+                listedInfo = listedInfos,
+                unlistedInfo = unlistedInfos,
                 Reason = request.Reason
             });
 
@@ -163,12 +177,14 @@ public class WorkerController : ControllerBase
             foreach (var p in approvedPermissions)
             {
                 var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
-                fields.Add(new FieldResponse
-                {
-                    Id = p.Id.ToString(),
-                    Label = info?.Desc ?? "Unknown",
-                    Checked = false
-                });
+                if (info?.Value != null) {
+                    fields.Add(new FieldResponse
+                    {
+                        Id = p.Id.ToString(),
+                        Label = info?.Desc ?? "Unknown",
+                        Checked = false
+                    });
+                }
             }
 
             var employer = await _employerService.GetEmployerInfoAsync(req.EmployerId);
@@ -184,6 +200,61 @@ public class WorkerController : ControllerBase
 
         return Ok(rows);
     }
+
+
+    // [HttpGet("unlistedinfo")]
+    // public async Task<ActionResult> GetUnlistedeInfo()
+    // {
+
+    //     var workerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    //     if (workerId == null) return Unauthorized();
+    //     var workerGuid = Guid.Parse(workerId);
+
+    //     var requests = await _requestService.GetAllByWorkerIdAsync(workerGuid);
+    //     var workerInfo = await _workerInfoService.GetAllAsync(workerGuid);
+    //     var permissions = await _permissionService.GetAllByWorkerIdAsync(workerGuid, 0);
+    //     var groupedPermissions = permissions.GroupBy(p => p.RequestId);
+
+    //     var employers = await _employerService.GetDistinctEmployers();
+    //     var employerMap = employers.ToDictionary(e => e.Id);
+
+    //     var rows = new List<RequestRowResponse>();
+
+    //     foreach (var group in groupedPermissions)
+    //     {
+    //         var request = requests.FirstOrDefault(p => p.Id == group.Key);
+    //         if (request == null) continue;
+
+    //         employerMap.TryGetValue(request.EmployerId, out var employer);
+
+    //         var workerInfos = new List<FieldResponse>();
+    //         foreach (var p in group)
+    //         {
+    //             var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
+
+
+    //             workerInfos.Add(new FieldResponse
+    //             {
+    //                 Id = p.Id.ToString(),
+    //                 Label = info?.Desc ?? "Unknown",
+    //                 Checked = false
+    //             });
+    //         }
+    //         rows.Add(new RequestRowResponse
+    //         {
+    //             Id = request.Id.ToString(),
+    //             Company = employer?.Name.ToString() ?? "Unknown",
+    //             Date = request.CreatedAt.ToString("dd.MM.yyyy hh:mm tt"),
+    //             Fields = workerInfos,
+    //             Reason = request.Reason
+    //         });
+
+    //     }
+    //     ;
+    //     return Ok(rows);
+
+    // }
+
 
 }
 

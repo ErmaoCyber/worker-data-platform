@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { FetchApi } from '../../lib/api';
 import ConfirmModal from "./ConfirmModal";
+import { AlertCircle } from "lucide-react";
 
 export interface Field {
     id: string;
@@ -14,15 +15,17 @@ export interface Row {
     id: string;
     company: string;
     date: string;
-    fields: Field[];
+    listedInfo: Field[];
+    unlistedInfo: Field[];
     reason: string;
     onComplete: () => void;
     expiryDate: string;
 }
 
 
-export default function RequestRow({ id, company, date, fields, reason, onComplete }: Row) {
-    const [checkedFields, setCheckedFields] = useState<Field[]>(fields);
+export default function RequestRow({ id, company, date, listedInfo, unlistedInfo, reason, onComplete }: Row) {
+    const [checkedFields, setCheckedFields] = useState<Field[]>(listedInfo);
+    const [checkedUnlistedFields, setUnlistedFields] = useState<Field[]>(unlistedInfo);
     const [errorMsg, setErrorMsg] = useState('');
     const [pendingAction, setPendingAction] = useState("");
     const [showModal, setShowModal] = useState(false);
@@ -34,13 +37,16 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
         setCheckedFields((prev) =>
             prev.map((f) => f.label === label ? { ...f, checked: !f.checked } : f)
         );
+        setUnlistedFields((prev) =>
+            prev.map((f) => f.label === label ? { ...f, checked: !f.checked } : f)
+        );
     };
 
     const onExpiry = (date: string) => {
         setExpiryDate(date);
     };
 
-    // useEffect(() => {console.log("expiryDate:", expiryDate, typeof expiryDate)}
+    // useEffect(() => {console.log("unlisted info:", checkedUnlistedFields)}
     // )
 
     async function changePermission(status: "approve" | "reject") {
@@ -49,7 +55,13 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
             await Promise.all(
                 checkedIds.map((permissionid) =>
                     FetchApi(`/api/Permission/${permissionid}/${status}`, {
-                        method: "PATCH"
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(
+                            expiryDate? expiryDate : null
+                        ),
                     }
                     ))
             );
@@ -80,6 +92,22 @@ export default function RequestRow({ id, company, date, fields, reason, onComple
 
                             />
                             {field.label}
+                        </label>
+                    ))}
+                    {checkedUnlistedFields.map((field) => (
+                        <label key={field.label}
+                            className="flex items-center gap-2 border border-gray-300  rounded-md px-3 py-1 text-sm text-gray-700 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={field.checked}
+                                onChange={() => toggleField(field.label)}
+                                className="cursor-pointer"
+
+                            /> 
+                            {field.label}
+                            <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center">
+                                <span className="text-white font-bold text-sm"> ! </span>
+                            </div>
                         </label>
                     ))}
                 </div>

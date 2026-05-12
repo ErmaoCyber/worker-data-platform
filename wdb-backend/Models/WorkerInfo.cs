@@ -37,7 +37,7 @@ public class WorkerInfo
     /// The value of the information.
     /// </summary>
     [Column("value")]
-     public required string Value { get; set; }
+     public required string? Value { get; set; }
 
     public ICollection<Permission> Permissions { get; set; }
 }
