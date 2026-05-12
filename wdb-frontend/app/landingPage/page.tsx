@@ -5,7 +5,12 @@ import CompanyLogo from "./../assets/CompanyLogo";
 import heroBackground from "./../assets/heroBackground.png";
 import howitWorks from "./../assets/howitWorks.png";
 import blockchainLogo from "./../assets/blockchainLogo.png";
+
 import Link from "next/link";
+
+import HowItWorks from "./components/HowItWorks";
+import FAQ from "./components/FAQ";
+import Gallery from "./components/Gallery";
 
 
 export default function LandingPage() {
@@ -54,7 +59,7 @@ export default function LandingPage() {
 
                     </div>
                 </section>
-                <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center">
+                <div className="absolute bottom-16 left-0 right-0 z-10 flex justify-center">
                     <Image
                         src={blockchainLogo}
                         alt=""
@@ -64,29 +69,20 @@ export default function LandingPage() {
                 </div>
             </div>
 
-            {/* ── Section 2 ── */}
+            {/*Section 2 Gallery */}
             <section className="py-24 px-10 flex flex-col items-center text-center gap-6">
-                <h2 className="text-4xl font-bold text-white">Hello</h2>
-                <p className="text-gray-400 max-w-xl">Add whatever content you want here.</p>
+                <Gallery />
             </section>
 
-            {/* ── Section 3 : How it works ── */}
+            {/*Section 3 : How it works */}
             <section className="py-24 px-10 bg-white flex flex-col items-center">
                 <h2 className="text-4xl font-bold text-slate-600">How <span className="font-normal">workPass</span> Works</h2>
-                <Image
-                    src={howitWorks}
-                    alt=""
-
-                    className="px-40 py-10"
-                    priority
-
-                />
+                <HowItWorks />
             </section>
 
-            {/* ── Section 4 : FAQs ── */}
+            {/*Section 4 : FAQs*/}
             <section className="py-24 px-10 bg-white flex flex-col items-center text-center gap-6">
-                <h2 className="text-4xl font-bold text-gray-700">Frequently <br /> Asked Questions</h2>
-                <p className="text-gray-400 max-w-xl">Add whatever content you want here.</p>
+                <FAQ />
             </section>
 
 
