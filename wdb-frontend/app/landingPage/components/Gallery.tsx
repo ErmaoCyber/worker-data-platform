@@ -69,7 +69,7 @@ export default function Gallery() {
 
     return (
         <section className="w-full">
-            <div className="relative w-full h-screen flex items-center justify-between px-6">
+            <div className="relative w-full h-screen flex items-center justify-between px-6 bg-fixed">
 
                 {/* Stacked background layers */}
                 {slides.map((s, i) => (

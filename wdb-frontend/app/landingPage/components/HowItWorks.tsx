@@ -34,8 +34,9 @@ const steps = [
 
 export default function HowItWorks() {
     return (
-        <section className="py-20 px-10 flex flex-col items-center gap-10">
+        <section className="flex flex-col items-center gap-10">
 
+            <h2 className="text-[44px] font-bold text-slate-600">How <span className="font-normal">workPass</span> Works</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
                 {steps.map((step) => (
                     <div key={step.number} className="flex flex-col gap-4">
