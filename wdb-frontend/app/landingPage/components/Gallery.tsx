@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StaticImageData } from "next/image";
 import { ReactNode } from "react";
+
 
 import centralized from "./../../assets/slides/centralized.png";
 import consent from "./../../assets/slides/consent.png";
@@ -53,6 +54,15 @@ export default function Gallery() {
 
     const prev = () => setCurrent((i) => (i === 0 ? slides.length - 1 : i - 1));
     const next = () => setCurrent((i) => (i === slides.length - 1 ? 0 : i + 1));
+
+    {/*Auto Slide */ }
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrent((i) => (i === slides.length - 1 ? 0 : i + 1));
+        }, 4000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     const slide = slides[current];
     const dark = slide.darkBackground ?? true;
