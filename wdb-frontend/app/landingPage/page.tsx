@@ -51,7 +51,7 @@ export default function LandingPage() {
                         </p>
                         <div className="flex items-center gap-3 mt-2">
                             <Link href="/login">
-                                <button className="cursor-pointer bg-gray-200 text-gray-700 font-bold text-sm tracking-wide px-7 py-3.5 rounded-2xl hover:opacity-85 transition-opacity">
+                                <button className="cursor-pointer bg-gray-200 text-gray-700 font-bold text-sm tracking-wide px-7 py-3.5 rounded-2xl hover:bg-yellow-200 transition-opacity">
                                     Get Started
                                 </button>
                             </Link>
@@ -70,18 +70,18 @@ export default function LandingPage() {
             </div>
 
             {/*Section 2 Gallery */}
-            <section className="py-24 px-10 flex flex-col items-center text-center gap-6">
+            <section className="w-full">
                 <Gallery />
             </section>
 
             {/*Section 3 : How it works */}
-            <section className="py-24 px-10 bg-white flex flex-col items-center">
+            <section className="py-24 px-10 bg-white flex flex-col items-center h-screen">
                 <h2 className="text-4xl font-bold text-slate-600">How <span className="font-normal">workPass</span> Works</h2>
                 <HowItWorks />
             </section>
 
             {/*Section 4 : FAQs*/}
-            <section className="py-24 px-10 bg-white flex flex-col items-center text-center gap-6">
+            <section className="py-24 px-10 bg-white flex flex-col items-center text-center gap-6 h-screen">
                 <FAQ />
             </section>
 
