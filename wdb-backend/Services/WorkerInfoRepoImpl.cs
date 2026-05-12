@@ -67,6 +67,7 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         {
             // if the record exist, then updat the vaule and save the change in db.
             existing.Value = workerInfo.Value;
+            existing.UpdatedAt = DateTime.UtcNow; // update the updated time to current time.
             await _context.SaveChangesAsync(cancellationToken);
             return existing;
         }

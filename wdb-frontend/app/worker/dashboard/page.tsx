@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getWorkerDashboard } from '@/lib/workerDashboardApi';
 import WorkerDashboardView from './WorkerDashboardView';
 import type { WorkerDashboardResponse } from '@/lib/workerDashboardApi';
+import { useAuth } from '@/context/AuthContext';
 
 export default function WorkerDashboardPage() {
   const router = useRouter();
@@ -13,10 +14,9 @@ export default function WorkerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const { userId, role } = useAuth() || {}; // get the userId from auth context
   useEffect(() => {
     async function loadDashboard() {
-      const userId = localStorage.getItem('userId');
-      const role = localStorage.getItem('role');
 
       if (!userId || role !== 'worker') {
         router.push('/login');

@@ -1,5 +1,4 @@
 'use client'
-
 import TopBar from '@/components/ui/TopBar'
 import UserInfoCard from './components/UserInfoCard'
 import { useEffect, useState } from 'react'
@@ -7,8 +6,7 @@ import { WorkerInfoItem } from './type'
 import BasicProfileCard from './components/BasicProfileCard'
 import { getWorkerProfile, updateWorkerProfile } from '@/lib/api/workerApi'
 import { useRouter } from 'next/navigation'
-import router from 'next/dist/shared/lib/router/router'
-
+import { useAuth } from '@/context/AuthContext'
 
 
 // define a shared component that display the function/ux will finish in next stage.
@@ -20,40 +18,12 @@ const PlaceholderCard = ({ title }: { title: string }) => (
 )
 
 // ProfilePage is the parent component for the personal profile page.
-// It fetches worker info from the API on mount and provides
-// a save handler to child components.
-// Note: workerId is hardcoded for testing. Will be replaced
-// with real user context after login integration.
+// It fetches worker info from the API on mount and provides the data and update function to the child components.
 export default function ProfilePage() {
     const router = useRouter()
+    const { token, userId: workerId, userName } = useAuth() || {}; // get the token and userId from auth context
     const [allDate, setAllData] = useState<WorkerInfoItem[]>([])
-    const [workerId, setWorkerId] = useState('')
-    const [userName, setUserName] = useState('')
-    const [token, setToken] = useState('')
 
-    useEffect(() => {
-        const storedToken = localStorage.getItem('accessToken')
-        const id = localStorage.getItem('userId')
-        const name = localStorage.getItem('userName')
-        if (!storedToken || !id || !name) {
-            router.push('/login')
-            return
-        }
-        setToken(storedToken)
-
-        setWorkerId(id ?? '')
-        setUserName(name ?? '')
-
-        const fetchData = async () => {
-            try {
-                const data = await getWorkerProfile(storedToken)
-                setAllData(Array.isArray(data) ? data : [data])
-            } catch (error) {
-                console.error('Failed to fetch worker profile:', error)
-            }
-        }
-        fetchData()
-    }, [router])
 
     const handlesave = async (desc: string, value: string) => {
         try {
@@ -68,6 +38,26 @@ export default function ProfilePage() {
         } catch (error) {
             console.error('Failed to update worker profile:', error)
         }
+    }
+
+    useEffect(() => {
+        if (!token || !workerId || !userName) {
+            router.push('/login')
+            return
+        }
+        const fetchData = async () => {
+            try {
+                const data = await getWorkerProfile(token)
+                setAllData(Array.isArray(data) ? data : [data])
+            } catch (error) {
+                console.error('Failed to fetch worker profile;', error)
+            }
+        }
+        fetchData()
+    }, [token, workerId, userName, router])
+
+    if (!token || !workerId || !userName) {
+        return null
     }
 
     return (
@@ -85,4 +75,3 @@ export default function ProfilePage() {
         </div>
     )
 }
-

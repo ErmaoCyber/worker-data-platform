@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { login, UserRole } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +13,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { login: authLogin } = useAuth(); // get the login funtion from auth context
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,10 +26,8 @@ export default function LoginPage() {
         setError(res.message);
         return;
       }
-      localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.setItem('userName', res.data.userName);
-      localStorage.setItem('role', role);
-      localStorage.setItem('userId', res.data.userId);
+
+      authLogin(res.data.accessToken, res.data.userName, res.data.email, res.data.userId); // update the auth context with the login data
       router.push(`/${role}/dashboard`);
     } catch {
       setError('Network error. Please try again.');

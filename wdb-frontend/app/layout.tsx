@@ -26,9 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="m-0 min-h-screen flex flex-col">
-        <AuthProvider>       {/* ← 加这行 */}
+        <AuthProvider>
           {children}
-        </AuthProvider>      {/* ← 加这行 */}
+        </AuthProvider>
       </body>
     </html>
   );

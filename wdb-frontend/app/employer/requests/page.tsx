@@ -3,14 +3,19 @@
 import { FetchApi } from '@/lib/api';
 // import { Worker } from 'cluster';
 import { use, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+
+
 
 export default function Page() {
+
+  const { token } = useAuth(); // get the token from auth context
   // Type definitions
   type WorkerInfo = {
     id: string;
     desc: string;
     value: string;
-    status: string; 
+    status: string;
   };
 
   type Worker = {
@@ -25,7 +30,7 @@ export default function Page() {
   // Worker data
   const [worker, setWorker] = useState<Worker | null>(null);
   const [workerInfos, setWorkerInfos] = useState<WorkerInfo[]>([]);
-  const[workerInfosdhasRequested,setWorkerInfosdhasRequested] = useState<WorkerInfo[]>([]);
+  const [workerInfosdhasRequested, setWorkerInfosdhasRequested] = useState<WorkerInfo[]>([]);
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -56,25 +61,27 @@ export default function Page() {
       }
       setWorker(worker);
 
-const token = localStorage.getItem('accessToken');
-    if (!token) {
-      setSentMsg('Please log in first');
-      return;
-    }
-       var workerInfos = await FetchApi(`/api/Employer?email=${email}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        }})
-        setWorkerInfos (workerInfos);
- 
-        var workerInfosdhasRequested = await FetchApi(`/api/Employer/GetRequestedWorkerInfosByEmail?email=${email}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        }})
 
-      setWorkerInfosdhasRequested (workerInfosdhasRequested );
+      if (!token) {
+        setSentMsg('Please log in first');
+        return;
+      }
+      var workerInfos = await FetchApi(`/api/Employer?email=${email}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }
+      })
+      setWorkerInfos(workerInfos);
+
+      var workerInfosdhasRequested = await FetchApi(`/api/Employer/GetRequestedWorkerInfosByEmail?email=${email}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }
+      })
+
+      setWorkerInfosdhasRequested(workerInfosdhasRequested);
 
       setFindWorker(true);
     } catch (error) {
@@ -103,7 +110,6 @@ const token = localStorage.getItem('accessToken');
     }
 
     setSentMsg('Sending...');
-    const token = localStorage.getItem('accessToken');
     if (!token) {
       setSentMsg('Please log in first');
       return;
@@ -184,26 +190,26 @@ const token = localStorage.getItem('accessToken');
                   </>
                 ) : (
                   <>
-                  {workerInfosdhasRequested.length>0 &&(<>
-                    <p className="text-gray-600">
-                      The info you have requested:
-                    </p>
-                   <div className="flex flex-col gap-2 mb-4">
-                      {workerInfosdhasRequested.map((w:WorkerInfo) => (
-                        <div
-                          key={w.id}
-                          className="flex items-center justify-center border rounded-lg border-gray-300 w-full"
-                        >
-                          <p className="flex-1 text-black"> {w.desc}: {w.status}</p>
-                        </div>
-                      ))}
-                    </div></>)}
-                  
+                    {workerInfosdhasRequested.length > 0 && (<>
+                      <p className="text-gray-600">
+                        The info you have requested:
+                      </p>
+                      <div className="flex flex-col gap-2 mb-4">
+                        {workerInfosdhasRequested.map((w: WorkerInfo) => (
+                          <div
+                            key={w.id}
+                            className="flex items-center justify-center border rounded-lg border-gray-300 w-full"
+                          >
+                            <p className="flex-1 text-black"> {w.desc}: {w.status}</p>
+                          </div>
+                        ))}
+                      </div></>)}
+
                     <p className="text-gray-600">
                       Please choose the info you want to request
                     </p>
                     <div className="flex flex-col gap-2 ">
-                      {workerInfos.map((w:WorkerInfo) => (
+                      {workerInfos.map((w: WorkerInfo) => (
                         <div
                           key={w.id}
                           className="flex items-center justify-center border rounded-lg border-gray-300 w-full"
