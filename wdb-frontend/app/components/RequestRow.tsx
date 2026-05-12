@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { FetchApi } from '../../lib/api';
 import ConfirmModal from "./ConfirmModal";
+import AddPersonalInfoModal from "./AddPersonalInfoModal"
 import { AlertCircle } from "lucide-react";
 
 export interface Field {
@@ -31,6 +32,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
     const [showModal, setShowModal] = useState(false);
     const [showExpiry, setShowExpiry] = useState(false);
     const [expiryDate, setExpiryDate] = useState("");
+    const [showAddInfoModal, setShowAddInfoModal] = useState(false);
 
 
     const toggleField = (label: string) => {
@@ -41,6 +43,13 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
             prev.map((f) => f.label === label ? { ...f, checked: !f.checked } : f)
         );
     };
+
+    // const toggleUnlistedField = (label: string) => {
+    //     setUnlistedFields((prev) =>
+    //         prev.map((f) => f.label === label ? { ...f, checked: !f.checked } : f)
+    //     );
+    //     setShowAddInfoModal(true);
+    // };
 
     const onExpiry = (date: string) => {
         setExpiryDate(date);
@@ -118,15 +127,20 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
 
             <div className="flex gap-2">
                 <button className="bg-green-500 hover:bg-green-600 text-white rounded-md px-4 py-2 text-base disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                    disabled={checkedFields.filter(f => f.checked).length === 0}
+                    disabled={checkedFields.filter(f => f.checked).length === 0 && checkedUnlistedFields.filter(f => f.checked).length === 0}
                     onClick={() => {
-                        setShowModal(true);
+                        if (checkedUnlistedFields.filter(f => f.checked).length > 0 ) {
+                            setShowAddInfoModal(true)
+                        } else {
+                            setShowModal(true);
+                            setShowExpiry(true);
+                        }
                         setPendingAction("approve");
-                        setShowExpiry(true);
+                        
                     }}
                 >✔</button>
                 <button className="bg-red-500 hover:bg-red-600 text-white rounded-md px-4 py-2 text-base disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                    disabled={checkedFields.filter(f => f.checked).length === 0}
+                    disabled={checkedFields.filter(f => f.checked).length === 0 && checkedUnlistedFields.filter(f => f.checked).length === 0}
                     onClick={() => {
                         setShowModal(true);
                         setPendingAction("reject")
@@ -135,7 +149,24 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
 
                 >✖</button>
                 {errorMsg && <p className="text-sm text-red-500">{errorMsg}</p>}
-
+                
+                {showAddInfoModal && (
+                    <AddPersonalInfoModal
+                        company={company}
+                        unlistedInfoDesc= {checkedUnlistedFields
+                                .filter((f) => f.checked)
+                                .map((f) => f.label)}
+                        onCancel={() => {
+                            setShowAddInfoModal(false);
+                        }}
+                        
+                        onNext={() => {
+                            setShowAddInfoModal(false);
+                            setShowModal(true);
+                        }}
+                        
+                    />
+                )}
 
                 {showModal && (
                     <ConfirmModal
@@ -156,6 +187,8 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                         choseExpiry={onExpiry}
                     />
                 )}
+
+                
             </div>
 
         </div>
