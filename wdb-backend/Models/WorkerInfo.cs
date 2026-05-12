@@ -31,14 +31,14 @@ public class WorkerInfo
     /// The information title such as gender, address.
     /// </summary>
     [Column("desc")]
-     public required string Desc { get; set; }
+    public required string Desc { get; set; }
 
     /// <summary>
     /// The value of the information.
     /// </summary>
     [Column("value")]
-     public required string Value { get; set; }
+    public required string Value { get; set; }
 
-    public ICollection<Permission> Permissions { get; set; }
+    public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
 }
 

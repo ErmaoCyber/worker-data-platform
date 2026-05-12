@@ -31,7 +31,7 @@ export async function addWorkerProfile(token: string, desc: string, value: strin
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ desc, value }),
+        body: JSON.stringify({ Desc: desc, Value: value }),
     });
 
     if (!response.ok) {
@@ -51,7 +51,7 @@ export async function updateWorkerProfile(token: string, desc: string, value: st
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ desc, value }),
+        body: JSON.stringify({ Desc: desc, Value: value }),
     })
 
     if (!response.ok) {
