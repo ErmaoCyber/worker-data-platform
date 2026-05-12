@@ -5,6 +5,7 @@ import CompanyLogo from "./../assets/CompanyLogo";
 import heroBackground from "./../assets/heroBackground.png";
 import howitWorks from "./../assets/howitWorks.png";
 import blockchainLogo from "./../assets/blockchainLogo.png";
+import firstStepSolutions from "./../assets/firstStepSolutions.png"
 
 import Link from "next/link";
 
@@ -46,7 +47,7 @@ export default function LandingPage() {
                             Your Sovereignty
                         </h1>
                         <p className="text-[17px] font-light leading-relaxed text-gray-200">
-                            Gain full control of your professional information with workPass. <br />
+                            Gain full control of your professional information with <span className="font-bold text-xl">workPass</span>. <br />
                             Enhanced with blockchain technology.
                         </p>
                         <div className="flex items-center gap-3 mt-2">
@@ -59,11 +60,21 @@ export default function LandingPage() {
 
                     </div>
                 </section>
-                <div className="absolute bottom-16 left-0 right-0 z-10 flex justify-center">
+                <div className="absolute bottom-16 left-0 right-0 z-10 flex justify-center items-center gap-8">
+                    <Image
+                        src={firstStepSolutions}
+                        alt=""
+                        width={0}
+                        height={0}
+                        style={{ height: '40px', width: 'auto' }}
+                        priority
+                    />
                     <Image
                         src={blockchainLogo}
                         alt=""
-                        width={160}
+                        width={0}
+                        height={0}
+                        style={{ height: '60px', width: 'auto' }}
                         priority
                     />
                 </div>
