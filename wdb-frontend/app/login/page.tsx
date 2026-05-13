@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { login, UserRole } from '@/lib/api';
+import heroBackground from './../assets/heroBackground.png'
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,8 +37,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="bg-white border border-[#D9D9D9] rounded-xl p-10 w-full max-w-[400px]">
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-gray-700">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+        style={{ backgroundImage: `url(${heroBackground.src})` }}
+      />
+      <div className="z-10 bg-white border border-[#D9D9D9] rounded-xl p-10 w-full max-w-[400px]">
 
         <h1 className="text-2xl font-bold text-black mt-0 mb-8">Sign In</h1>
 

@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 * @version:
 */
 // export default function Home() {
-  
+
 //   // return (
 //   //   <div className="text-center bg-blue-80 min-h-screen">
 //   //     <h1 className="text-4xl font-bold mt-32">Worker Data Blockchain</h1>
@@ -17,5 +17,5 @@ import { redirect } from 'next/navigation';
 //   redirect
 // }
 export default function Home() {
-    redirect('/login');
-  }
+  redirect('/landingPage');
+}
