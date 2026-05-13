@@ -58,7 +58,7 @@ export default function HowItWorks() {
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
                         >
-                            <span className={`text-3xl font-extrabold tracking-tight text-center transition-colors duration-300 ${isDimmed ? "text-gray-600" : "text-gray-100"
+                            <span className={`text-3xl font-extrabold tracking-tight text-center transition-colors duration-300 ${isHovered ? "text-gray-300" : "text-gray-600"
                                 }`}>
                                 {step.number}
                             </span>
@@ -94,16 +94,48 @@ export default function HowItWorks() {
                 })}
             </div>
 
-            <div className={`w-full max-w-6xl rounded-2xl border py-5 px-8 text-center shadow-sm transition-all duration-300 ${hoveredIndex !== null
-                ? "bg-white border-gray-700"
-                : "bg-white border-gray-200"
-                }`}>
-                <p className={`text-sm transition-colors duration-300 ${hoveredIndex !== null ? "text-gray-400" : "text-gray-500"
-                    }`}>
-                    Every transactions are recorded in{"  "}
-                    <span className={`font-extrabold text-2xl transition-colors duration-300 ${hoveredIndex !== null ? "text-gray-600" : "text-gray-600"
-                        }`}>BLOCKCHAIN</span>
-                </p>
+            {/* RECORD */}
+            <div className={`w-full max-w-6xl rounded-2xl border px-8 py-6 shadow-sm transition-all duration-300 bg-white border-gray-200`}>
+
+                <div className="text-center mb-6">
+                    <h3 className={`text-2xl font-extrabold tracking-wide transition-colors duration-300 text-gray-700`}>
+                        RECORD
+                    </h3>
+                    <p className={`text-sm mt-1 transition-colors duration-300 text-gray-500`}>
+                        Every transactions are recorded in blockchain
+                    </p>
+                </div>
+
+                <div className="relative flex w-fit mx-auto gap-8">
+
+                    {/* Link bar */}
+                    <div className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 h-4 rounded-full transition-colors duration-300 bg-gray-600`} />
+
+                    {/* Boxes */}
+                    {steps.map((step, index) => {
+                        const isHovered = hoveredIndex === index;
+                        const isDimmed = hoveredIndex !== null && !isHovered;
+
+                        return (
+                            <div
+                                key={step.number}
+                                className={`relative z-10 p-5 aspect-square max-w-[100px] w-full flex items-center justify-center rounded-xl border transition-all duration-300 ${isDimmed
+                                    ? "bg-white border-gray-200 "
+                                    : "bg-gray-800 border-gray-700"
+                                    }`}
+                            >
+                                <Image
+                                    src={step.icon}
+                                    alt={step.title}
+                                    height={50}
+                                    className={`object-contain transition-opacity duration-300 ${isDimmed ? "opacity-50" : "opacity-100"
+                                        }`}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+
             </div>
 
         </section>
