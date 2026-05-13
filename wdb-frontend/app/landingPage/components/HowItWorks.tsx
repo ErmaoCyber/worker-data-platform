@@ -43,7 +43,7 @@ export default function HowItWorks() {
 
             <h2 className={`text-[44px] font-bold transition-colors duration-300 ${hoveredIndex !== null ? "text-gray-200" : "text-slate-600"
                 }`}>
-                How <span className="font-normal">workPass</span> Works
+                How <span className="font-normal">WorkPass</span> Works
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
@@ -58,7 +58,7 @@ export default function HowItWorks() {
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
                         >
-                            <span className={`text-3xl font-extrabold tracking-tight text-center transition-colors duration-300 ${isHovered ? "text-gray-300" : "text-gray-600"
+                            <span className={`text-3xl font-extrabold tracking-tight text-center transition-colors duration-300 ${isHovered ? "text-gray-200" : "text-gray-600"
                                 }`}>
                                 {step.number}
                             </span>
@@ -98,7 +98,7 @@ export default function HowItWorks() {
             <div className={`w-full max-w-6xl rounded-2xl border px-8 py-6 shadow-sm transition-all duration-300 bg-white border-gray-200`}>
 
                 <div className="text-center mb-6">
-                    <h3 className={`text-2xl font-extrabold tracking-wide transition-colors duration-300 text-gray-700`}>
+                    <h3 className={`text-2xl font-extrabold tracking-wide transition-colors duration-300 text-gray-600`}>
                         RECORD
                     </h3>
                     <p className={`text-sm mt-1 transition-colors duration-300 text-gray-500`}>
@@ -120,8 +120,8 @@ export default function HowItWorks() {
                             <div
                                 key={step.number}
                                 className={`relative z-10 p-5 aspect-square max-w-[100px] w-full flex items-center justify-center rounded-xl border transition-all duration-300 ${isDimmed
-                                    ? "bg-white border-gray-200 "
-                                    : "bg-gray-800 border-gray-700"
+                                    ? "bg-gray-600 border-gray-600"
+                                    : "bg-white border-gray-200 border-2 "
                                     }`}
                             >
                                 <Image

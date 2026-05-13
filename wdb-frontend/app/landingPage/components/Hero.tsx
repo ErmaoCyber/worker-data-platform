@@ -36,7 +36,7 @@ export default function Hero() {
                         </h1>
                         <p className="text-[17px] font-light leading-relaxed text-gray-200">
                             Gain full control of your professional information with{" "}
-                            <span className="font-bold text-xl">workPass</span>. <br />
+                            <span className="font-bold text-xl">WorkPass</span>. <br />
                             Enhanced with blockchain technology.
                         </p>
                         <div className="flex items-center gap-3 mt-2">
