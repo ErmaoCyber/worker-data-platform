@@ -109,7 +109,7 @@ export default function HowItWorks() {
                 <div className="relative flex w-fit mx-auto gap-8">
 
                     {/* Link bar */}
-                    <div className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 h-4 rounded-full transition-colors duration-300 bg-gray-600`} />
+                    <div className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 h-4 rounded-full transition-colors duration-300 bg-gray-300`} />
 
                     {/* Boxes */}
                     {steps.map((step, index) => {
