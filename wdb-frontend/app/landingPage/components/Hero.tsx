@@ -73,13 +73,13 @@ export default function Hero() {
                         contacts, often without clear transparency to the worker.
                     </p>
                     <br />
-                    <p className="mb-3">Workers rarely know what data is held about them or where it lives</p>
+                    <p className="mb-3">Workers rarely know what data is held about them or where it lives.</p>
                     <br />
-                    <p className="mb-3">Access is controlled by employers, not the individuals the data belongs to</p>
+                    <p className="mb-3">Access is controlled by employers, not the individuals the data belongs to.</p>
                     <br />
-                    <p className="mb-3">The same information gets re-entered across every new employer or system</p>
+                    <p className="mb-3">The same information gets re-entered across every new employer or system.</p>
                     <br />
-                    <p className="mb-3">Sensitive data is duplicated, fragmented, and difficult to audit</p>
+                    <p className="mb-3">Sensitive data is duplicated, fragmented, and difficult to audit.</p>
                     <br />
                     <p className=" text-gray-300 font-light">
                         WorkPass gives workers a transparent, permission-based system where every
