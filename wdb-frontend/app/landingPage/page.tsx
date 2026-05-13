@@ -17,7 +17,7 @@ export default function LandingPage() {
                 <Gallery />
             </section>
 
-            <section className="py-24 px-10 bg-white h-screen snap-start shrink-0 overflow-y-auto">
+            <section className="bg-white snap-start shrink-0 overflow-y-auto">
                 <HowItWorks />
             </section>
 

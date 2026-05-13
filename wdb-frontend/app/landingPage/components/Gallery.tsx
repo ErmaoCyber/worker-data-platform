@@ -67,6 +67,13 @@ export default function Gallery() {
     const slide = slides[current];
     const dark = slide.darkBackground ?? true;
 
+    const [animKey, setAnimKey] = useState(0);
+
+    // Reset animation on slide change
+    useEffect(() => {
+        setAnimKey(k => k + 1);
+    }, [current]);
+
     return (
         <section className="w-full">
             <div className="relative w-full h-screen flex items-center justify-between px-6 bg-fixed">
@@ -99,7 +106,11 @@ export default function Gallery() {
 
                 {/* Slide content */}
                 {/* Problem */}
-                <span className={`absolute top-24 left-0 z-10 text-2xl font-extrabold px-8 py-4 rounded-r-3xl flex items-center gap-3 ${dark ? "text-white" : "text-gray-700"} `}>
+                <span
+                    key={`problem-${animKey}`}
+                    className={`animate-slide-in-left absolute top-24 left-0 z-10 text-2xl font-extrabold px-8 py-4 rounded-r-3xl flex items-center gap-3 ${dark ? "text-white" : "text-gray-700"
+                        }`}
+                >
                     <span className="flex items-center justify-center w-8 h-8 rounded-full border-2 text-sm font-black shrink-0">
                         !
                     </span>
@@ -107,8 +118,11 @@ export default function Gallery() {
                 </span>
                 {/* Solutions*/}
                 <div className="relative z-10 flex flex-1 flex-col justify-between h-full py-8 px-10">
-                    <div className="absolute right-24 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-2 text-right max-w-sm">
-                        <h2 className={`text-5xl font-bold ${dark ? "text-white" : "text-gray-700"}`}>
+                    <div
+                        key={`solution-${animKey}`}
+                        className="animate-slide-in-right absolute right-24 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-2 text-right max-w-sm"
+                    >
+                        <h2 className={` animate-slide-in-left text-5xl font-bold ${dark ? "text-white" : "text-gray-700"}`}>
                             {slide.solutionTitle}
                         </h2>
                         <p className={`text-sm leading-relaxed ${dark ? "text-gray-200" : "text-gray-600"}`}>

@@ -26,7 +26,7 @@ export default function FAQ() {
     return (
         <section className="px-10 flex flex-col items-center gap-4 w-full">
 
-            <h2 className="text-[44px] font-extrabold text-gray-800 mb-6 text-center">
+            <h2 className="text-[44px] font-extrabold text-gray-700 mb-6 text-center">
                 Frequently <br /> Asked Questions
             </h2>
 
