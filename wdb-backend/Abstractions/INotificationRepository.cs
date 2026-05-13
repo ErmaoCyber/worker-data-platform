@@ -22,4 +22,6 @@ public interface INotificationRepository
     Task<Notification?> GetByIdAsync(Guid notificationId, CancellationToken ct);
     // customized method for showing the readable data from the frontend
     Task<NotificationFormat> FormatNotification(NotificationEvent e, CancellationToken ct = default);
+    // different parameter from the FormatNotification, could merge to be one method using
+    Task<NotificationFormatComponent> FormatNotificationPipeline(Notification n, CancellationToken ct = default);
 }

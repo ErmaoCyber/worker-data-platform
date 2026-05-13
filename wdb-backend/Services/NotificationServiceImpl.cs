@@ -1,4 +1,5 @@
 using wdb_backend.Abstractions;
+using wdb_backend.DTOs;
 
 namespace wdb_backend.Services;
 
@@ -33,5 +34,16 @@ public class NotificationServiceImpl : INotificationService
     public async Task<List<Models.Notification>> GetReadAsync(Guid workerId, CancellationToken ct)
     {
         return await _notificationRepo.GetAllReadByWorkerIdAsync(workerId, ct);
+    }
+
+    public async Task<IList<NotificationFormatComponent>> NotificationFormat(List<Models.Notification> notifications, CancellationToken ct)
+    {
+        IList<NotificationFormatComponent> notificationList = new List<NotificationFormatComponent>();
+        foreach (var notification in notifications)
+        {
+            notificationList.Add(await _notificationRepo.FormatNotificationPipeline(notification, ct));
+        }
+
+        return notificationList;
     }
 }

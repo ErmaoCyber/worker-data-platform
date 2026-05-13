@@ -55,10 +55,9 @@ public class NotificationRepoImpl : INotificationRepository
     // customized method for showing the readable data from the frontend
     public async Task<NotificationFormat> FormatNotification(NotificationEvent e, CancellationToken ct)
     {
-        var employerName = _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == e.EmployerId, ct).Result?.Name;
-        var workerName = _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == e.WorkerId, ct).Result?.Name;
-        var workerInfoDesc = _dbContext.WorkerInfos
-            .FirstOrDefaultAsync(workerInfo => workerInfo.Id == e.WorkerInfoId, ct).Result?.Desc;
+        var employerName = (await _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == e.EmployerId, ct))?.Name;
+        var workerName = (await _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == e.WorkerId, ct))?.Name;
+        var workerInfoDesc = (await _dbContext.WorkerInfos.FirstOrDefaultAsync(workerInfo => workerInfo.Id == e.WorkerInfoId, ct))?.Desc;
         return new NotificationFormat
         (
             employerName,
@@ -66,6 +65,22 @@ public class NotificationRepoImpl : INotificationRepository
             e.Type.ToString(),
             workerInfoDesc,
             e.CreateAt
+        );
+    }
+
+    public async Task<NotificationFormatComponent> FormatNotificationPipeline(Models.Notification n, CancellationToken ct)
+    {
+        var employerName = (await _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == n.EmployerId, ct))?.Name;
+        var workerName = (await _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == n.WorkerId, ct))?.Name;
+        var workerInfoDesc = (await _dbContext.WorkerInfos.FirstOrDefaultAsync(workerInfo => workerInfo.Id == n.WorkerInfoId, ct))?.Desc;
+        return new NotificationFormatComponent
+        (
+            n.Id,
+            employerName,
+            workerName,
+            n.Type,
+            workerInfoDesc,
+            n.CreateAt
         );
     }
 }

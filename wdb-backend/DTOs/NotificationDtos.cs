@@ -11,3 +11,4 @@ public record NotificationEvent(Guid EmployerId, Guid WorkerId, Guid WorkerInfoI
 
 // dto to hold the readable info
 public record NotificationFormat(string? EmployerName, string? WorkerName, string NotificationType, string? WorkInfoDesc, DateTime NotificationTime);
+public record NotificationFormatComponent(Guid Id, string? EmployerName, string? WorkerName, string NotificationType, string? WorkInfoDesc, DateTime NotificationTime);
