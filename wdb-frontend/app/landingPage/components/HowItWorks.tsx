@@ -38,14 +38,14 @@ export default function HowItWorks() {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     return (
-        <section className={`h-screen py-24 px-10  flex flex-col items-center gap-10 transition-colors duration-300 ${hoveredIndex !== null ? "bg-gray-800" : "bg-white"
+        <section className={`h-screen py-24 px-10  flex flex-col items-center gap-4 transition-colors duration-300 ${hoveredIndex !== null ? "bg-gray-800" : "bg-white"
             }`}>
 
             <h2 className={`text-[44px] font-bold transition-colors duration-300 ${hoveredIndex !== null ? "text-gray-200" : "text-slate-600"
                 }`}>
                 How <span className="font-normal">WorkPass</span> Works
             </h2>
-
+            {/**Step cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
                 {steps.map((step, index) => {
                     const isHovered = hoveredIndex === index;
