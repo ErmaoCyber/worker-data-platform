@@ -31,7 +31,7 @@ public class WorkerInfo
     /// The information title such as gender, address.
     /// </summary>
     [Column("desc")]
-     public required string Desc { get; set; }
+    public required string Desc { get; set; }
 
     /// <summary>
     /// The value of the information.
