@@ -40,7 +40,7 @@ public class WorkerInfo
      public required string? Value { get; set; }
 
     [Column("category")]
-     public required string? Category { get; set; }
+     public string? Category { get; set; }
 
     public ICollection<Permission>? Permissions { get; set; }
 }
