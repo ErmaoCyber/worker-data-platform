@@ -12,4 +12,7 @@ public interface INotificationService
 
     // pipeline to handle all the notification object to the readable object
     Task<IList<NotificationFormatComponent>> NotificationFormat(List<Models.Notification> notifications, CancellationToken ct);
+
+    // single-query version: isRead=null → all, false → unread, true → read
+    Task<IList<NotificationFormatComponent>> GetFormattedAsync(Guid workerId, bool? isRead, CancellationToken ct);
 }

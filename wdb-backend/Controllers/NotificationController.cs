@@ -53,8 +53,7 @@ public class NotificationController : ControllerBase
     [HttpGet("all/{workerId}")]
     public async Task<ActionResult<ApiResponse<IList<NotificationFormatComponent>>>> GetAll(Guid workerId, CancellationToken ct)
     {
-        var notifications = await _notificationService.GetAllAsync(workerId, ct);
-        var notificationList = await _notificationService.NotificationFormat(notifications, ct);
+        var notificationList = await _notificationService.GetFormattedAsync(workerId, null, ct);
         return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
     }
 
@@ -62,8 +61,7 @@ public class NotificationController : ControllerBase
     [HttpGet("unread/{workerId}")]
     public async Task<IActionResult> GetUnread(Guid workerId, CancellationToken ct)
     {
-        var notifications = await _notificationService.GetUnreadAsync(workerId, ct);
-        var notificationList = await _notificationService.NotificationFormat(notifications, ct);
+        var notificationList = await _notificationService.GetFormattedAsync(workerId, false, ct);
         return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
     }
 
@@ -71,8 +69,7 @@ public class NotificationController : ControllerBase
     [HttpGet("read/{workerId}")]
     public async Task<IActionResult> GetRead(Guid workerId, CancellationToken ct)
     {
-        var notifications = await _notificationService.GetReadAsync(workerId, ct);
-        var notificationList = await _notificationService.NotificationFormat(notifications, ct);
+        var notificationList = await _notificationService.GetFormattedAsync(workerId, true, ct);
         return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
     }
 

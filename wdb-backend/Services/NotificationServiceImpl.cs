@@ -46,4 +46,9 @@ public class NotificationServiceImpl : INotificationService
 
         return notificationList;
     }
+
+    public async Task<IList<NotificationFormatComponent>> GetFormattedAsync(Guid workerId, bool? isRead, CancellationToken ct)
+    {
+        return await _notificationRepo.GetFormattedNotificationsAsync(workerId, isRead, ct);
+    }
 }

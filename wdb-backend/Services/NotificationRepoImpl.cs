@@ -83,4 +83,34 @@ public class NotificationRepoImpl : INotificationRepository
             n.CreateAt
         );
     }
+
+    public async Task<IList<NotificationFormatComponent>> GetFormattedNotificationsAsync(
+        Guid workerId, bool? isRead, CancellationToken ct)
+    {
+        var rows = await (
+            from n in _dbContext.Notifications
+            where n.WorkerId == workerId && (!isRead.HasValue || n.IsRead == isRead.Value)
+            join e in _dbContext.Employers on n.EmployerId equals e.Id into eg
+            from e in eg.DefaultIfEmpty()
+            join wi in _dbContext.WorkerInfos on n.WorkerInfoId equals wi.Id into wig
+            from wi in wig.DefaultIfEmpty()
+            select new
+            {
+                n.Id,
+                EmployerName = (string?)e.Name,
+                n.Type,
+                WorkerInfoDesc = (string?)wi.Desc,
+                n.CreateAt
+            }
+        ).ToListAsync(ct);
+
+        return rows.Select(r => new NotificationFormatComponent(
+            r.Id,
+            r.EmployerName,
+            null,
+            r.Type,
+            r.WorkerInfoDesc,
+            r.CreateAt
+        )).ToList();
+    }
 }

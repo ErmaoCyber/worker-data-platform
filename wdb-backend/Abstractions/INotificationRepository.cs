@@ -24,4 +24,7 @@ public interface INotificationRepository
     Task<NotificationFormat> FormatNotification(NotificationEvent e, CancellationToken ct = default);
     // different parameter from the FormatNotification, could merge to be one method using
     Task<NotificationFormatComponent> FormatNotificationPipeline(Notification n, CancellationToken ct = default);
+
+    // single JOIN query: isRead=null → all, false → unread, true → read
+    Task<IList<NotificationFormatComponent>> GetFormattedNotificationsAsync(Guid workerId, bool? isRead, CancellationToken ct = default);
 }

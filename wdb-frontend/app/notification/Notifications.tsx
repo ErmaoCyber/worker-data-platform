@@ -1,8 +1,6 @@
 'use client'
 
-import { FetchApi } from "@/lib/api";
-import React, { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5258';
 
@@ -15,6 +13,14 @@ interface NotifcationFormat{
     notificationTime: string
 }
 
+// format ISO date string to 24-hour format e.g. "May 14, 2026, 10:23:45"
+const formatTime = (iso: string) =>
+    new Date(iso).toLocaleString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+    });
+
 export default function Notification(){
 
     const [notifications, setNotifications] = useState<NotifcationFormat[]>([]);
@@ -26,6 +32,9 @@ export default function Notification(){
     useEffect(() => {
       const load = async () => {
           const token = localStorage.getItem("accessToken");
+          // skip request if user is not logged in
+          if (!token) return;
+
           const res = await fetch(`${API_URL}/api/notification/unread/${workerId}`, {
               method: 'GET',
               headers: {
@@ -33,9 +42,11 @@ export default function Notification(){
                   'Authorization': `Bearer ${token}`
               }
           });
+          // skip parsing if response is not successful (e.g. 401, 500)
+          if (!res.ok) return;
+
           const response = await res.json();
-        //   console.log(response.data);
-          setNotifications(response.data);
+          setNotifications(response.data ?? []);
       };
       load();
     }, []);
@@ -63,7 +74,11 @@ export default function Notification(){
 
     return (
         <div>
-            {notifications.map(n => <p key={n.id} onClick={() => updateNotificationStatusHandler(n.id)}>{n.notificationType + ": " + n.employerName + " at " + n.notificationTime}</p>)}
+            {notifications.map(n => (
+                <p key={n.id} onClick={() => updateNotificationStatusHandler(n.id)}>
+                    {n.notificationType + ": " + n.employerName + " - " + n.workerInfoDesc + " at " + formatTime(n.notificationTime)}
+                </p>
+            ))}
         </div>
     );
 

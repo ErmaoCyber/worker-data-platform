@@ -8,6 +8,7 @@
 
 import { FetchApi } from "@/lib/api";
 import Notification from "./Notifications";
+import NotificationBell from "./NotificationBell";
 
 
 export default function NotificationTestPanel() {
@@ -86,6 +87,10 @@ export default function NotificationTestPanel() {
       <div>
         <Notification />
       </div>
+
+      <div className="flex justify-end p-4">
+            <NotificationBell />
+        </div>
 
 
     </div>
