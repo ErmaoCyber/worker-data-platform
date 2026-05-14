@@ -24,14 +24,14 @@ export async function getWorkerProfile(token: string): Promise<WorkerInfoItem[]>
 
 
 //when user add more info and click save, this method will pass the data to http and back to endfront
-export async function addWorkerProfile(token: string, desc: string, value: string) {
+export async function addWorkerProfile(token: string, desc: string, value: string, category: string) {
     const response = await fetch(BASE_URL, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ desc, value }),
+        body: JSON.stringify({ desc, value, category }),
     });
 
     if (!response.ok) {

@@ -39,6 +39,9 @@ public class WorkerInfo
     [Column("value")]
      public required string? Value { get; set; }
 
-    public ICollection<Permission> Permissions { get; set; }
+    [Column("category")]
+     public required string? Category { get; set; }
+
+    public ICollection<Permission>? Permissions { get; set; }
 }
 

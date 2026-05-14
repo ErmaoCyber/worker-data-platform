@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { FetchApi } from '../../lib/api';
 import ConfirmModal from "./ConfirmModal";
 import AddPersonalInfoModal from "./AddPersonalInfoModal"
-import { AlertCircle } from "lucide-react";
 
 export interface Field {
     id: string;
@@ -34,6 +33,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
     const [expiryDate, setExpiryDate] = useState("");
     const [showAddInfoModal, setShowAddInfoModal] = useState(false);
 
+    const combined = [...checkedFields, ... checkedUnlistedFields];
 
     const toggleField = (label: string) => {
         setCheckedFields((prev) =>
@@ -44,12 +44,6 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
         );
     };
 
-    // const toggleUnlistedField = (label: string) => {
-    //     setUnlistedFields((prev) =>
-    //         prev.map((f) => f.label === label ? { ...f, checked: !f.checked } : f)
-    //     );
-    //     setShowAddInfoModal(true);
-    // };
 
     const onExpiry = (date: string) => {
         setExpiryDate(date);
@@ -59,7 +53,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
     // )
 
     async function changePermission(status: "approve" | "reject") {
-        const checkedIds = checkedFields.filter((f) => f.checked).map((f) => f.id);
+        const checkedIds = combined.filter((f) => f.checked).map((f) => f.id);
         try {
             await Promise.all(
                 checkedIds.map((permissionid) =>
@@ -172,7 +166,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                     <ConfirmModal
                         company={company}
                         status={pendingAction}
-                        selectedFields={checkedFields
+                        selectedFields={combined
                             .filter((f) => f.checked)
                             .map((f) => f.label)}
                         onConfirm={() => {
