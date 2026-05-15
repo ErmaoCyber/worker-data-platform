@@ -177,14 +177,12 @@ public class WorkerController : ControllerBase
             foreach (var p in approvedPermissions)
             {
                 var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
-                if (info?.Value != null) {
                     fields.Add(new FieldResponse
                     {
                         Id = p.Id.ToString(),
                         Label = info?.Desc ?? "Unknown",
                         Checked = false
                     });
-                }
             }
 
             var employer = await _employerService.GetEmployerInfoAsync(req.EmployerId);

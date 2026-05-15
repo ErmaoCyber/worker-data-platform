@@ -44,6 +44,15 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
         );
     };
 
+    const unToggleFields = () => {
+        setCheckedFields((prev) =>
+            prev.map((f) => ({ ...f, checked: false})
+        ));
+        setUnlistedFields((prev) =>
+            prev.map((f) => ({ ...f, checked: false})
+        ));
+    }
+
 
     const onExpiry = (date: string) => {
         setExpiryDate(date);
@@ -127,8 +136,8 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                             setShowAddInfoModal(true)
                         } else {
                             setShowModal(true);
-                            setShowExpiry(true);
                         }
+                        setShowExpiry(true);
                         setPendingAction("approve");
                         
                     }}
@@ -152,6 +161,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                                 .map((f) => f.label)}
                         onCancel={() => {
                             setShowAddInfoModal(false);
+                            unToggleFields()
                         }}
                         
                         onNext={() => {
@@ -176,6 +186,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                         onCancel={() => {
                             setShowModal(false);
                             setPendingAction("");
+                            unToggleFields();
                         }}
                         showExpiry={showExpiry}
                         choseExpiry={onExpiry}
