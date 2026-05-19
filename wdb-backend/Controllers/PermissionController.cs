@@ -8,47 +8,51 @@ namespace wdb_backend.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class PermissionController:ControllerBase
+public class PermissionController : ControllerBase
 {
     private readonly IPermissionService _permissionService;
 
-    public PermissionController (IPermissionService permissionService)
+    public PermissionController(IPermissionService permissionService)
     {
         _permissionService = permissionService;
     }
 
     [HttpPatch("{permissionid}/approve")]
-    public async Task<ActionResult<Permission>> ApprovePermission (Guid permissionId, CancellationToken cancellationToken)
+    public async Task<ActionResult<Permission>> ApprovePermission(Guid permissionId, [FromBody] DateTime? expiryDate, CancellationToken cancellationToken)
     {
         try
         {
-            var update = await _permissionService.UpdateAsync(permissionId, 1, cancellationToken);
-            return Ok(update); 
-        } catch (KeyNotFoundException)
-        {
-            return NotFound(new {error = "PERMISSION_NOT_FOUND"});
-        } catch (InvalidOperationException)
-        {
-            return UnprocessableEntity(new {error = "INAVLID_STATUS_CHANGE"});
+            var update = await _permissionService.UpdateAsync(permissionId, 1, expiryDate, cancellationToken);
+            return Ok(update);
         }
-        
-    } 
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "PERMISSION_NOT_FOUND" });
+        }
+        catch (InvalidOperationException)
+        {
+            return UnprocessableEntity(new { error = "INAVLID_STATUS_CHANGE" });
+        }
+
+    }
 
     [HttpPatch("{permissionid}/reject")]
-    public async Task<ActionResult<Permission>> RejectPermission (Guid permissionId, CancellationToken cancellationToken)
+    public async Task<ActionResult<Permission>> RejectPermission(Guid permissionId, CancellationToken cancellationToken)
     {
         try
         {
-            var update = await _permissionService.UpdateAsync(permissionId, 2, cancellationToken);
-            return Ok(update); 
-        } catch (KeyNotFoundException)
-        {
-            return NotFound(new {error = "PERMISSION_NOT_FOUND"});
-        } catch (InvalidOperationException)
-        {
-            return UnprocessableEntity(new {error = "INAVLID_STATUS_CHANGE"});
+            var update = await _permissionService.UpdateAsync(permissionId, 2, null, cancellationToken);
+            return Ok(update);
         }
-        
-    } 
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "PERMISSION_NOT_FOUND" });
+        }
+        catch (InvalidOperationException)
+        {
+            return UnprocessableEntity(new { error = "INAVLID_STATUS_CHANGE" });
+        }
+
+    }
 
 }

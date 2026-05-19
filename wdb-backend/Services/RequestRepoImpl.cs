@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Data;
@@ -9,14 +10,19 @@ public class RequestRepoImpl : IRequestRepository
 {
     private readonly AppDbContext _dbContext;
 
-    public RequestRepoImpl (AppDbContext dbContext)
+    public RequestRepoImpl(AppDbContext dbContext)
     {
         _dbContext = dbContext;
     }
-    public Task AddAsync(Guid employerId, Guid workerId, Request request, CancellationToken cancellationToken = default)
+ 
+    public async Task<Request> AddAsync(Guid employerId, Guid workerId, string reason, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var request = new Request { EmployerId = employerId, WorkerId = workerId, Reason = reason };
+        _dbContext.Requests.Add(request);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return request;
     }
+
 
     public Task<LinkedList<Request>> GetAllByEmployerIdAsync(Guid employerId, CancellationToken cancellationToken = default)
     {
@@ -31,7 +37,7 @@ public class RequestRepoImpl : IRequestRepository
 
     public async Task<Request> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
     {
-        var result = await _dbContext.Requests.FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken)?? throw new KeyNotFoundException();
+        var result = await _dbContext.Requests.FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken) ?? throw new KeyNotFoundException();
         return result;
     }
 

@@ -26,18 +26,19 @@ public class WorkerInfo
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public DateTime CreatedAt { get; set; }
 
-    
-    /// <summary>
-    /// The information title such as gender, address. 
-    /// </summary>
-    [Column("desc")]    
-     public required string Desc { get; set; }
 
     /// <summary>
-    /// The value of the information. 
+    /// The information title such as gender, address.
     /// </summary>
-    [Column("value")]    
-     public required string Value { get; set; }
+    [Column("desc")]
+    public required string Desc { get; set; }
 
+    /// <summary>
+    /// The value of the information.
+    /// </summary>
+    [Column("value")]
+    public required string Value { get; set; }
+
+    public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
 }
-    
+

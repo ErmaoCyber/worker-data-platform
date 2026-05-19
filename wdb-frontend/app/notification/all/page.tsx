@@ -23,10 +23,9 @@ export default function AllNotificationsPage() {
     const [unread, setUnread] = useState<NotificationItem[]>([]);
     const [read, setRead] = useState<NotificationItem[]>([]);
 
-    const workerId = "019de156-fc1a-7770-ad95-e895fa39cdd3";
-
     useEffect(() => {
         const loadAll = async () => {
+            const workerId = localStorage.getItem('userId');
             const token = localStorage.getItem('accessToken');
             if (!token) return;
 

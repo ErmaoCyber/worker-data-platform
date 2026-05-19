@@ -25,10 +25,10 @@ export default function NotificationBell() {
     const [notifications, setNotifications] = useState<NotificationFormat[]>([]);
     const [isOpen, setIsOpen] = useState(false);
 
-    const workerId = "019de156-fc1a-7770-ad95-e895fa39cdd3";
-
     useEffect(() => {
         const load = async () => {
+            const workerId = localStorage.getItem('userId');
+            if (!workerId) return;
             const token = localStorage.getItem('accessToken');
             if (!token) return;
 

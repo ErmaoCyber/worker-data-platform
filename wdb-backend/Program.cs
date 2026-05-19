@@ -1,103 +1,107 @@
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
-using System.Text.Json.Serialization;
-using wdb_backend.Data;
-using wdb_backend.Abstractions;
-using wdb_backend.Services;
-using System.Reflection;
-using System.Text.Json.Serialization;
-using wdb_backend.Abstractions;
-using wdb_backend.Services;
-using wdb_backend.Models;
-using wdb_backend.Notification;
+  using System.Reflection;
+  using System.Text.Json.Serialization;
+  using wdb_backend.Abstractions;
+  using wdb_backend.Data;
+  using wdb_backend.Models;
+  using wdb_backend.Notification;
+  using wdb_backend.Services;
+  using wdb_backend.Usecases;
 
+  var builder = WebApplication.CreateBuilder(args);
 
-var builder = WebApplication.CreateBuilder(args);
+  // ============================
+  // services
+  // ============================
 
-// ============================
-// service
-// ============================
+  // OpenAPI / Swagger
+  builder.Services.AddOpenApi();
+  builder.Services.AddEndpointsApiExplorer();
+  builder.Services.AddSwaggerGen(options =>
+  {
+      var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+      var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+      options.IncludeXmlComments(xmlPath);
+  });
 
-// OpenAPI / Swagger
-builder.Services.AddOpenApi();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    options.IncludeXmlComments(xmlPath);
-});
+  // CORS for Next.js frontend
+  builder.Services.AddCors(options =>
+  {
+      options.AddPolicy("FrontendPolicy", policy =>
+      {
+          policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+      });
+  });
 
-// CORS make sure to add before authentication and authorization middlewares, otherwise the preflight request will be blocked before reaching CORS middleware.
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("FrontendPolicy", policy =>
-    {
-        policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
+  // Infrastructure
+  builder.Services.AddInfrastructure(builder.Configuration);
 
-// infrastructure
-builder.Services.AddInfrastructure(builder.Configuration);
+  // Core services
+  builder.Services.AddScoped<IWorkerService, WorkerServiceImpl>();
+  builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
+  builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
+  builder.Services.AddScoped<IEmployerService, EmployerServiceImpl>();
+  builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
 
-// application services
-builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
-builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
-builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
+  // Use cases
+  builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
+  builder.Services.AddScoped<IFindWorkerInfosByEmailUsecase, FindWorkerInfosByEmailUsecaseImpl>();
 
+  // Repositories
+  builder.Services.AddScoped<IWorkerRepository, WorkerRepoImpl>();
+  builder.Services.AddScoped<IRequestRepository, RequestRepoImpl>();
+  builder.Services.AddScoped<IPermissionRepository, PermissionRepoImpl>();
+  builder.Services.AddScoped<IWorkerInfoRepository, WorkerInfoRepoImpl>();
+  builder.Services.AddScoped<IEmployerRepository, EmployerRepoImpl>();
 
-// DbContext
-builder.Services.AddDbContextPool<AppDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+  // Dashboard services
+  builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
+  builder.Services.AddScoped<IEmployerDashboardService, EmployerDashboardServiceImpl>();
 
-// Controllers(with JSON enum converter)
-builder.Services.AddControllers()
-    .AddJsonOptions(o =>
-        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+  // Blockchain service
+  builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
 
-builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
-builder.Services.AddScoped<IPermissionRepository, PermissionRepoImpl>();
-builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
-builder.Services.AddScoped<IRequestRepository, RequestRepoImpl>();
-builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
-builder.Services.AddScoped<IWorkerInfoRepository, WorkerInfoRepoImpl>();
-builder.Services.AddScoped<IEmployerService, EmployerServicerImpl>();
-builder.Services.AddScoped<IEmployerRepository, EmployerRepoImpl>();
-builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
-// Services
-builder.Services.AddScoped<IWorkerDashboardService, WorkerDashboardServiceImpl>();
+  // DbContext
+  builder.Services.AddDbContextPool<AppDbContext>(opt =>
+      opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// register SignalR
-builder.Services.AddSignalR();
+  // Controllers with JSON enum converter
+  builder.Services.AddControllers()
+      .AddJsonOptions(o =>
+          o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// register MediatR (scan current app and find out all Handlers)
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+  // register SignalR
+  builder.Services.AddSignalR();
 
-builder.Services.AddScoped<INotificationRepository, NotificationRepoImpl>();
-builder.Services.AddScoped<INotificationService, NotificationServiceImpl>();
+  // register MediatR (scan current app and find out all Handlers)
+  builder.Services.AddMediatR(cfg =>
+      cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
-var app = builder.Build();
+  builder.Services.AddScoped<INotificationRepository, NotificationRepoImpl>();
+  builder.Services.AddScoped<INotificationService, NotificationServiceImpl>();
 
-// ============================
-// middleware the order matters!
-// ============================
+  var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+  // ============================
+  // middleware - order matters
+  // ============================
 
-app.UseCors("FrontendPolicy");   // CORS use once.
-app.UseAuthentication();
-app.UseAuthorization();
+  if (app.Environment.IsDevelopment())
+  {
+      app.UseSwagger();
+      app.UseSwaggerUI();
+  }
 
-app.MapControllers();
-app.MapHub<NotificationsHub>("/hubs/notifications");  // map notification hub
-app.MapOpenApi();
+  app.UseCors("FrontendPolicy");
 
-app.Run();
+  app.UseAuthentication();
+  app.UseAuthorization();
+
+  app.MapControllers();
+  app.MapHub<NotificationsHub>("/hubs/notifications");  // map notification hub
+  app.MapOpenApi();
+
+  app.Run();

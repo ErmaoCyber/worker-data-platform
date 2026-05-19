@@ -27,10 +27,10 @@ export default function Notification(){
     // const [refreshKey, setRefreshKey] = useState(0);
 
     // const workerId = localStorage.getItem("userId");
-    const workerId = "019de156-fc1a-7770-ad95-e895fa39cdd3"; 
 
     useEffect(() => {
       const load = async () => {
+          const workerId = localStorage.getItem("userId");
           const token = localStorage.getItem("accessToken");
           // skip request if user is not logged in
           if (!token) return;
