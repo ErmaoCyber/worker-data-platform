@@ -49,6 +49,6 @@ public class WorkerInfo
     public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
 
     [Column("category", TypeName = "varchar(50)")]
-    public WorkerInfoCategory Category { get; set; }
+    public WorkerInfoCategory? Category { get; set; }
 }
 

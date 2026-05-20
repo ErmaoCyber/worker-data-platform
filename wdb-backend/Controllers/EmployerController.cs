@@ -19,10 +19,10 @@ public class EmployerController : ControllerBase
     private readonly IFindWorkerInfosByEmailUsecase _findWorkerInfosUsecase;
     private readonly IWorkerService _workerService;
 
-    private readonly AddFlexibleWorkerInfoUsecaseImpl _addFlexibleWorkerInfoUsecase;
+    private readonly IAddFlexibleWorkerInfoUsecase _addFlexibleWorkerInfoUsecase;
 
     public EmployerController(ICreateDataAccessRequestUsecase createDataAccessUsecase,
-        IFindWorkerInfosByEmailUsecase findWorkerInfosUsecase, IWorkerService workerService, AddFlexibleWorkerInfoUsecaseImpl addFlexibleWorkerInfoUsecase)
+        IFindWorkerInfosByEmailUsecase findWorkerInfosUsecase, IWorkerService workerService, IAddFlexibleWorkerInfoUsecase addFlexibleWorkerInfoUsecase)
     {
         _createDataAccessUsecase = createDataAccessUsecase;
         _findWorkerInfosUsecase = findWorkerInfosUsecase;
