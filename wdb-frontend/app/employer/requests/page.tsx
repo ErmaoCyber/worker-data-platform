@@ -39,6 +39,12 @@ export default function Page() {
   const [findWorker, setFindWorker] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
 
+  // add new flexiable request 
+  const [newFlexRequestDesc, setNewFlexRequestDesc] = useState('');
+  const [newDescCategory, setNewDescCategory] = useState('');
+  const [newFlexRequestMsg, setNewFlexRequestMsg] = useState('');
+
+
   // Selected worker info items (stored as set of GUIDs)
   const [isSelected, setSelected] = useState<Set<string>>(new Set());
 
@@ -100,35 +106,57 @@ export default function Page() {
   }
   // Submit access request for selected worker info items
   async function handleRequest() {
-    if (!reason) {
-      alert('please fill in the reason');
-      return;
-    }
-    if (isSelected.size == 0) {
-      alert('please select at least one item');
-      return;
-    }
 
-    setSentMsg('Sending...');
     if (!token) {
       setSentMsg('Please log in first');
       return;
     }
+
+    if (isSelected.size == 0 && (!newFlexRequestDesc && newDescCategory)) {
+      alert('please select at least one item');
+      return;
+    }
+    if (!reason) {
+      alert('please fill in the reason');
+      return;
+    }
+    setSentMsg('Sending...');
+
     try {
-      var result = await FetchApi('/api/Employer/AccessRequests', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          email: email,
-          infoDesc: Array.from(isSelected),
-          reason: reason,
-        }),
-      });
-      setSentMsg('Request has been sent');
-    } catch (error) {
-      setSentMsg('Something went wrong, please try again');
+      if (isSelected.size > 0) {
+        await FetchApi('/api/Employer/CreateDataAccessRequest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            WorkerEmail: worker?.email,
+            InfoIds: Array.from(isSelected),
+            Reason: reason,
+          }),
+        });
+      }
+
+      if (newFlexRequestDesc && newDescCategory) {
+        await FetchApi('/api/Employer/AddFlexibleWorkerInfo', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            WorkerEmail: worker?.email,
+            Desc: newFlexRequestDesc,
+            Category: newDescCategory,
+          }),
+        });
+      }
+
+      setSentMsg('Request sent!');
+    }
+    catch (error) {
+      setSentMsg('Failed to send request');
     }
   }
   return (
@@ -223,6 +251,42 @@ export default function Page() {
                           <p className="flex-1 text-black"> {w.desc}</p>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Add new flexible request */}
+                    <div className='w-full flex items-center justify-center my-4'>
+                      <p className='text-gray-600'>Or add new flexible request(Optional)</p>
+                      {/* Category 下拉框 */}
+                      <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 w-full-40 ml-4">
+                        <label className="absolute top-2 left-4 text-xs text-gray-400 ">
+                          Category
+                        </label>
+                        <select
+                          className="w-full outline-none text-gray-800"
+                          value={newDescCategory}
+                          onChange={(e) => setNewDescCategory(e.target.value)}
+                        >
+                          <option value="">Select category</option>
+                          <option value="PersonaInformation">Personal Information</option>
+                          <option value="MedicalInformation">Medical Information</option>
+                          <option value="CareerInformation">Career Information</option>
+                          <option value="OtherInformation">Other Information</option>
+                        </select>
+                      </div>
+
+
+                      {/* Desc 输入框 */}
+                      <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 w-full-60 ml-4">
+                        <label className="absolute top-2 left-4 text-xs text-gray-400 ">
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full outline-none text-gray-800"
+                          value={newFlexRequestDesc}
+                          onChange={(e) => setNewFlexRequestDesc(e.target.value)}
+                        />
+                      </div>
                     </div>
 
                     {/* Reason input and submit */}
