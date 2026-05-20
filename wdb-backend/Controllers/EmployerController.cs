@@ -7,6 +7,7 @@ using wdb_backend.DTOs;
 using wdb_backend.Models;
 using wdb_backend.Services;
 using System.Security.Claims;
+using wdb_backend.Usecases;
 
 namespace wdb_backend.Controllers;
 
@@ -18,12 +19,15 @@ public class EmployerController : ControllerBase
     private readonly IFindWorkerInfosByEmailUsecase _findWorkerInfosUsecase;
     private readonly IWorkerService _workerService;
 
+    private readonly AddFlexibleWorkerInfoUsecaseImpl _addFlexibleWorkerInfoUsecase;
+
     public EmployerController(ICreateDataAccessRequestUsecase createDataAccessUsecase,
-        IFindWorkerInfosByEmailUsecase findWorkerInfosUsecase, IWorkerService workerService)
+        IFindWorkerInfosByEmailUsecase findWorkerInfosUsecase, IWorkerService workerService, AddFlexibleWorkerInfoUsecaseImpl addFlexibleWorkerInfoUsecase)
     {
         _createDataAccessUsecase = createDataAccessUsecase;
         _findWorkerInfosUsecase = findWorkerInfosUsecase;
         _workerService = workerService;
+        _addFlexibleWorkerInfoUsecase = addFlexibleWorkerInfoUsecase;
     }
 
     /// <summary>
@@ -109,7 +113,7 @@ public class EmployerController : ControllerBase
             {
                 Id = w.Id,
                 Desc = w.Desc,
-                Status = w.Permissions.FirstOrDefault()?.Status.ToString()??"Unknown"
+                Status = w.Permissions.FirstOrDefault()?.Status.ToString() ?? "Unknown"
             }).ToList();
             return Ok(result);
         }
@@ -153,4 +157,37 @@ public class EmployerController : ControllerBase
         await _createDataAccessUsecase.CreateDataAccessRequest(selectedInfos, employerId, worker_id, request.Reason);
         return Ok();
     }
+
+
+
+    /// <summary>    
+    /// Adds flexible worker information for a specific worker.
+    /// </summary>
+    /// <param name="request">The request containing worker email, category, description, and employer ID.</param>
+    /// <returns>200 OK if successful, 404 if worker not found.</returns>
+    [Authorize]
+    [HttpPost("AddFlexibleWorkerInfo")]
+    public async Task<ActionResult> AddFlexibleWorkerInfo([FromBody] AddFlexibleRequestDto request)
+    {            // get employer id from the user's token
+        var employerIdClaim = User.FindFirst("sub")?.Value
+                              ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (employerIdClaim == null)
+        {
+            return Unauthorized();
+        }
+
+        var employerId = Guid.Parse(employerIdClaim);
+
+        try
+        {
+            await _addFlexibleWorkerInfoUsecase.ExecuteAsync(request.WorkerEmail, request.Category, request.Desc, employerId);
+            return Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound($"Worker {request.WorkerEmail} not found");
+        }
+    }
+
 }

@@ -47,6 +47,7 @@ builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
 // Use cases
 builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
 builder.Services.AddScoped<IFindWorkerInfosByEmailUsecase, FindWorkerInfosByEmailUsecaseImpl>();
+builder.Services.AddScoped<IAddFlexibleWorkerInfoUsecase, AddFlexibleWorkerInfoUsecaseImpl>();
 
 // Repositories
 builder.Services.AddScoped<IWorkerRepository, WorkerRepoImpl>();

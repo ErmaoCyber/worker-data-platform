@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations.Schema;
 namespace wdb_backend.Models;
 
+using wdb_backend.Enums;
+
 /// <summary>
 /// Represents a worker's information in the system. Maps to the "worker_info" table in the database.
 /// </summary>
@@ -45,5 +47,8 @@ public class WorkerInfo
     [Column("value")]
     public required string Value { get; set; }
     public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
+
+    [Column("category", TypeName = "varchar(50)")]
+    public WorkerInfoCategory Category { get; set; }
 }
 
