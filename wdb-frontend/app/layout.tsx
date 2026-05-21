@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SignalRListener from "./notification/SignalRListener";
 import 'react-toastify/dist/ReactToastify.css';
+import { UserProvider } from "@/lib/api/userContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,8 +28,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="m-0 min-h-screen flex flex-col">
-        {children}
-        <SignalRListener />
+        {/* Previously rendered {children} and <SignalRListener /> directly at body root.
+            Wrapped in <UserProvider> so notification components and the SignalR listener
+            can consume the centralized user state via useUser(). */}
+        <UserProvider>
+          {children}
+          <SignalRListener />
+        </UserProvider>
       </body>
     </html>
   );

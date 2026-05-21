@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
+import { useUser } from '@/lib/api/userContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5258';
 
@@ -28,18 +29,24 @@ export default function Notification(){
 
     // const workerId = localStorage.getItem("userId");
 
-    useEffect(() => {
-      const load = async () => {
-          const workerId = localStorage.getItem("userId");
-          const token = localStorage.getItem("accessToken");
-          // skip request if user is not logged in
-          if (!token) return;
+    // Centralized user state. The effect below depends on `user` so it re-runs after login.
+    const { user } = useUser();
 
-          const res = await fetch(`${API_URL}/api/notification/unread/${workerId}`, {
+    useEffect(() => {
+      // Skip until UserContext is hydrated (user is null on first paint and on logged-out pages).
+      if (!user) return;
+      const load = async () => {
+          // Replaced by user.userId / user.accessToken from UserContext.
+          // const workerId = localStorage.getItem("userId");
+          // const token = localStorage.getItem("accessToken");
+          // // skip request if user is not logged in
+          // if (!token) return;
+
+          const res = await fetch(`${API_URL}/api/notification/unread/${user.userId}`, {
               method: 'GET',
               headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
+                  'Authorization': `Bearer ${user.accessToken}`
               }
           });
           // skip parsing if response is not successful (e.g. 401, 500)
@@ -49,16 +56,18 @@ export default function Notification(){
           setNotifications(response.data ?? []);
       };
       load();
-    }, []);
+    }, [user]);
 
     async function updateNotificationStatusHandler(notificationId: string) {
-        const token = localStorage.getItem("accessToken");
-        
+        if (!user) return;
+        // Replaced by user.accessToken from UserContext.
+        // const token = localStorage.getItem("accessToken");
+
         const res = await fetch(`${API_URL}/api/notification/${notificationId}`, {
             method: 'PATCH',
             headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${user.accessToken}`,
             },
         });
 

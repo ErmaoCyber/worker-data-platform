@@ -4,10 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { login, UserRole } from '@/lib/api';
+import { useUser } from '@/lib/api/userContext';
 import heroBackground from './../assets/heroBackground.png'
 
 export default function LoginPage() {
   const router = useRouter();
+  // Centralized user state. setUser also mirrors the four fields into localStorage
+  // so existing localStorage readers across the app continue to work.
+  const { setUser } = useUser();
   const [role, setRole] = useState<UserRole>('worker');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,10 +28,19 @@ export default function LoginPage() {
         setError(res.message);
         return;
       }
-      localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.setItem('userName', res.data.userName);
-      localStorage.setItem('role', role);
-      localStorage.setItem('userId', res.data.userId);
+      // Replaced by setUser() from UserContext. setUser persists the same four keys
+      // to localStorage internally, so any code that still reads localStorage directly
+      // (other pages on main) continues to work.
+      // localStorage.setItem('accessToken', res.data.accessToken);
+      // localStorage.setItem('userName', res.data.userName);
+      // localStorage.setItem('role', role);
+      // localStorage.setItem('userId', res.data.userId);
+      setUser({
+        userId: res.data.userId,
+        accessToken: res.data.accessToken,
+        userName: res.data.userName,
+        role,
+      });
       router.push(`/${role}/dashboard`);
     } catch {
       setError('Network error. Please try again.');
