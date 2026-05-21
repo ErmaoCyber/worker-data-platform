@@ -1,9 +1,17 @@
+import Sidebar from '@/component/sidebar/Sidebar';
 
-// Employer layout: shared sidebar navigation for all employer pages
-export default function EmployerLayout({ children }: { children: React.ReactNode }) {
+export default function EmployerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      {children}
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar role="employer" />
+
+      <main className="flex-1 overflow-y-auto p-6">
+        {children}
+      </main>
     </div>
   );
 }
