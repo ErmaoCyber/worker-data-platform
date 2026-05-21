@@ -14,16 +14,26 @@ export default function WorkerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const { userId, role } = useAuth() || {}; // get the userId from auth context
+  // Read auth state from AuthContext
+  const { userId, role, isAuthReady } = useAuth();
+
   useEffect(() => {
     async function loadDashboard() {
+      // Wait until AuthContext finishes restoring auth data from localStorage
+      if (!isAuthReady) {
+        return;
+      }
 
+      // Only workers can access this page
       if (!userId || role !== 'worker') {
         router.push('/login');
         return;
       }
 
       try {
+        setLoading(true);
+        setError('');
+
         const dashboardData = await getWorkerDashboard(userId);
         setData(dashboardData);
       } catch {
@@ -34,9 +44,9 @@ export default function WorkerDashboardPage() {
     }
 
     loadDashboard();
-  }, [router]);
+  }, [isAuthReady, userId, role, router]);
 
-  if (loading) {
+  if (!isAuthReady || loading) {
     return (
       <main className="min-h-screen bg-slate-50 px-8 py-8">
         <p className="text-slate-600">Loading dashboard...</p>

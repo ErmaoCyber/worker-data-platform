@@ -1,93 +1,134 @@
 'use client';
-// 改这一行
-import { createContext, useState, ReactNode, useEffect, useContext } from 'react';
 
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
-// define the type for the authentication context
-type AuthContextType = {
-    token: string | null;
-    role: string | null;
-    userName: string | null;
-    email: string | null;
-    userId: string | null;
-    login: (token: string, userName: string, email: string, userId: string, role: string) => void;
-    logout: () => void;
+// Auth data stored in React state
+type AuthState = {
+  token: string | null;
+  role: string | null;
+  userName: string | null;
+  email: string | null;
+  userId: string | null;
 };
 
-export const AuthContext = createContext<AuthContextType | null>(null); // create a context with the defined type
+// Auth context exposed to the app
+type AuthContextType = AuthState & {
+  isAuthReady: boolean;
+  login: (token: string, userName: string, email: string, userId: string, role: string) => void;
+  logout: () => void;
+};
 
-// create a provider component to wrap the app and provide the authentication state
-// first, define the type for the provider's props
 type AuthProviderProps = {
-    children: ReactNode;
+  children: ReactNode;
 };
 
-// then, create the provider component
+const emptyAuthState: AuthState = {
+  token: null,
+  role: null,
+  userName: null,
+  email: null,
+  userId: null,
+};
+
+export const AuthContext = createContext<AuthContextType | null>(null);
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-    const [token, setToken] = useState<string | null>(null);
-    const [role, setRole] = useState<string | null>(null);
-    const [userName, setUserName] = useState<string | null>(null);
-    const [email, setEmail] = useState<string | null>(null);
-    const [userId, setUserId] = useState<string | null>(null);
+  const [authState, setAuthState] = useState<AuthState>(emptyAuthState);
 
-    useEffect(() => {
-        // Load auth state from localStorage on mount
-        const storedToken = localStorage.getItem('accessToken');
-        const storedRole = localStorage.getItem('role');
-        const storedUserName = localStorage.getItem('userName');
-        const storedEmail = localStorage.getItem('email');
-        const storedUserId = localStorage.getItem('userId');
-        if (storedToken && storedRole && storedUserName && storedEmail && storedUserId) {
-            setToken(storedToken);
-            setRole(storedRole);
-            setUserName(storedUserName);
-            setEmail(storedEmail);
-            setUserId(storedUserId);
-        }
-    }, []);
+  // Used to prevent protected pages from redirecting before localStorage is checked
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
+  useEffect(() => {
+    // Restore auth state after page refresh
+    const storedToken = localStorage.getItem('accessToken');
+    const storedRole = localStorage.getItem('role');
+    const storedUserName = localStorage.getItem('userName');
+    const storedEmail = localStorage.getItem('email');
+    const storedUserId = localStorage.getItem('userId');
 
-    // define the login and logout functions to update the authentication state
-    const login = (token: string, userName: string, email: string, userId: string, role: string) => {
-        setToken(token);
-        setUserId(userId);
-        setUserName(userName);
-        setEmail(email);
-        setRole(role);
-        localStorage.setItem('accessToken', token);
-        localStorage.setItem('userName', userName);
-        localStorage.setItem('email', email);
-        localStorage.setItem('userId', userId);
-        localStorage.setItem('role', role);
-    };
-    // the logout function clarifies the authentication state and removes the relevant items form localstorage
-    const logout = () => {
-        setToken(null);
-        setRole(null);
-        setUserName(null);
-        setEmail(null);
-        setUserId(null);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('role');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('email');
-        localStorage.removeItem('userId');
-    };
-
-    // return the provider component with the authentication state and functions as the value
-    return (
-        <AuthContext.Provider value={{ token, role, userName, email, userId, login, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
-
-};
-// create a custom hook to use the authentication context in other components
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
+    if (storedToken && storedRole && storedUserName && storedEmail && storedUserId) {
+      // This is intentional: we restore auth state once from localStorage on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAuthState({
+        token: storedToken,
+        role: storedRole,
+        userName: storedUserName,
+        email: storedEmail,
+        userId: storedUserId,
+      });
     }
-    return context;
 
-}
+    // Auth restoration has finished, even if no saved login exists
+    setIsAuthReady(true);
+  }, []);
+
+  const login = (
+    token: string,
+    userName: string,
+    email: string,
+    userId: string,
+    role: string
+  ) => {
+    const newAuthState: AuthState = {
+      token,
+      role,
+      userName,
+      email,
+      userId,
+    };
+
+    // Update React state
+    setAuthState(newAuthState);
+
+    // Persist login after refresh
+    localStorage.setItem('accessToken', token);
+    localStorage.setItem('role', role);
+    localStorage.setItem('userName', userName);
+    localStorage.setItem('email', email);
+    localStorage.setItem('userId', userId);
+
+    setIsAuthReady(true);
+  };
+
+  const logout = () => {
+    // Clear React state
+    setAuthState(emptyAuthState);
+
+    // Clear saved login
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('email');
+    localStorage.removeItem('userId');
+
+    setIsAuthReady(true);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        token: authState.token,
+        role: authState.role,
+        userName: authState.userName,
+        email: authState.email,
+        userId: authState.userId,
+        isAuthReady,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Custom hook for reading auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+
+  return context;
+};
