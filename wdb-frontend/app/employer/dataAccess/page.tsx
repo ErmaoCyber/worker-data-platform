@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import MyRequestsTab from './MyRequestsTab';
+import MyAccessTab from './MyAccessTab';
 
 export default function EmployerDataAccessPage() {
   const [activeTab, setActiveTab] = useState('my-requests');
@@ -48,12 +49,7 @@ export default function EmployerDataAccessPage() {
 
       <div className="mt-6">
         {activeTab === 'my-requests' && <MyRequestsTab />}
-
-        {activeTab === 'my-access' && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-            My Access will be added in a later story.
-          </div>
-        )}
+        {activeTab === 'my-access' && <MyAccessTab />}
       </div>
     </main>
   );

@@ -33,12 +33,17 @@ public class WorkerInfo
     [Column("desc")]
     public required string Desc { get; set; }
 
+
+
+    [Column("updated_at")]
+    public DateTime? UpdatedAt { get; set; }
+
+
     /// <summary>
     /// The value of the information.
     /// </summary>
     [Column("value")]
     public required string Value { get; set; }
-
     public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
 }
 

@@ -44,6 +44,8 @@ builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
 builder.Services.AddScoped<IEmployerService, EmployerServiceImpl>();
 builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
 builder.Services.AddScoped<IEmployerSentRequestService, EmployerSentRequestServiceImpl>();
+builder.Services.AddScoped<IActiveAccessService, ActiveAccessServiceImpl>();
+builder.Services.AddScoped<IEmployerActiveAccessService, EmployerActiveAccessServiceImpl>();
 
 // Use cases
 builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
