@@ -61,7 +61,7 @@ export default function Page() {
       label: 'Active Access',
       children: (
         <div>
-          <ActiveAccessTab />
+          <ActiveAccessTab workerId={userId ?? ''} />
         </div>
       ),
     },

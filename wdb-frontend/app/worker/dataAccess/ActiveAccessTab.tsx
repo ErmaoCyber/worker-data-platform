@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import ActiveRow, { ActiveRowData } from "../../components/ActiveRow";
 import { FetchApi } from "../../../lib/api";
 
+interface Props {
+  workerId: string;
+}
+
 // New backend response shape
 type ActiveAccessApiItem = {
   requestId: string;
@@ -16,8 +20,7 @@ type ActiveAccessApiItem = {
   }[];
 };
 
-export default function ActiveAccessTab() {
-  const [workerId, setWorkerId] = useState('');
+export default function ActiveAccessTab({ workerId }: Props) {
   const [permissions, setPermissions] = useState<ActiveRowData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -26,11 +29,6 @@ export default function ActiveAccessTab() {
   // New filter states
   const [searchText, setSearchText] = useState('');
   const [selectedDataType, setSelectedDataType] = useState('All');
-
-  useEffect(() => {
-    const id = localStorage.getItem('userId');
-    if (id) setWorkerId(id);
-  }, []);
 
   useEffect(() => {
     if (!workerId) return;
