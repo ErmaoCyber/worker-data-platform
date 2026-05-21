@@ -1,4 +1,4 @@
-import Sidebar from "@/components/sidebar/Sidebar"
+import Sidebar from "@/component/sidebar/Sidebar"
 
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {

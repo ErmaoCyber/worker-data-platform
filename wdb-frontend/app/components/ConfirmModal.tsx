@@ -1,6 +1,6 @@
 "use client";
 
-import  DatePicker  from '../../components/ui/DatePicker'
+import DatePicker from '../../component/ui/DatePicker'
 import { useState } from 'react'
 
 interface ConfirmModalProps {
@@ -13,7 +13,7 @@ interface ConfirmModalProps {
     choseExpiry: (date: string) => void;
 }
 
-export default function ConfirmModal({ company, status, selectedFields, onConfirm, onCancel, showExpiry, choseExpiry}: ConfirmModalProps) {
+export default function ConfirmModal({ company, status, selectedFields, onConfirm, onCancel, showExpiry, choseExpiry }: ConfirmModalProps) {
     const [expiryDate, setExpiryDate] = useState<Date | null>(null);
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -41,13 +41,13 @@ export default function ConfirmModal({ company, status, selectedFields, onConfir
                             setExpiryDate(date);
                             choseExpiry(date ? date.toISOString() : "");
                         }}
-                        >
+                    >
                     </DatePicker>
                     )}
-                    
+
                 </>
 
-                    
+
 
                 <div className="flex gap-3 justify-end mt-6">
                     <button
