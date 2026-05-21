@@ -1,5 +1,6 @@
-import Sidebar from "@/components/sidebar/Sidebar"
+import Sidebar from "@/component/sidebar/Sidebar"
 import NotificationBell from "@/app/notification/NotificationBell"
+
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
   return (

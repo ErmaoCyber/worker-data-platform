@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
 import { WorkerInfoItem } from "../type"
-import TextInput from "@/components/ui/TextInput"
-import Dropdown from "@/components/ui/Dropdown"
-import { DisplayField } from '@/components/ui/DisplayField'
+import TextInput from "@/component/ui/TextInput"
+import Dropdown from "@/component/ui/Dropdown"
+import { DisplayField } from '@/component/ui/DisplayField'
 
 // define what type of data should be inject
 interface BasicProfileCardProps {

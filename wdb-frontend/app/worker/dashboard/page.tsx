@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getWorkerDashboard } from '@/lib/workerDashboardApi';
 import WorkerDashboardView from './WorkerDashboardView';
 import type { WorkerDashboardResponse } from '@/lib/workerDashboardApi';
+import { useAuth } from '@/context/AuthContext';
 
 export default function WorkerDashboardPage() {
   const router = useRouter();
@@ -13,17 +14,26 @@ export default function WorkerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Read auth state from AuthContext
+  const { userId, role, isAuthReady } = useAuth();
+
   useEffect(() => {
     async function loadDashboard() {
-      const userId = localStorage.getItem('userId');
-      const role = localStorage.getItem('role');
+      // Wait until AuthContext finishes restoring auth data from localStorage
+      if (!isAuthReady) {
+        return;
+      }
 
+      // Only workers can access this page
       if (!userId || role !== 'worker') {
         router.push('/login');
         return;
       }
 
       try {
+        setLoading(true);
+        setError('');
+
         const dashboardData = await getWorkerDashboard(userId);
         setData(dashboardData);
       } catch {
@@ -34,9 +44,9 @@ export default function WorkerDashboardPage() {
     }
 
     loadDashboard();
-  }, [router]);
+  }, [isAuthReady, userId, role, router]);
 
-  if (loading) {
+  if (!isAuthReady || loading) {
     return (
       <main className="min-h-screen bg-slate-50 px-8 py-8">
         <p className="text-slate-600">Loading dashboard...</p>

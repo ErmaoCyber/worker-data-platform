@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import { useUser } from '@/lib/api/userContext';
+import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5258';
 
@@ -23,26 +23,21 @@ const formatTime = (iso: string) =>
 export default function AllNotificationsPage() {
     const [unread, setUnread] = useState<NotificationItem[]>([]);
     const [read, setRead] = useState<NotificationItem[]>([]);
-    // Centralized user state. The effect below depends on `user` so it re-runs after login.
-    const { user } = useUser();
+    // Centralized auth state. The effect below depends on userId/token so it re-runs after login.
+    const { userId, token, isAuthReady } = useAuth();
 
     useEffect(() => {
-        // Skip until UserContext is hydrated (user is null on first paint and on logged-out pages).
-        if (!user) return;
+        // Wait until AuthContext finishes restoring; then skip when no user is present.
+        if (!isAuthReady || !userId || !token) return;
         const loadAll = async () => {
-            // Replaced by user.userId / user.accessToken from UserContext.
-            // const workerId = localStorage.getItem('userId');
-            // const token = localStorage.getItem('accessToken');
-            // if (!token) return;
-
             const headers = {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user.accessToken}`
+                'Authorization': `Bearer ${token}`
             };
 
             const [unreadRes, readRes] = await Promise.all([
-                fetch(`${API_URL}/api/notification/unread/${user.userId}`, { headers }),
-                fetch(`${API_URL}/api/notification/read/${user.userId}`, { headers })
+                fetch(`${API_URL}/api/notification/unread/${userId}`, { headers }),
+                fetch(`${API_URL}/api/notification/read/${userId}`, { headers })
             ]);
 
             if (unreadRes.ok) {
@@ -55,17 +50,15 @@ export default function AllNotificationsPage() {
             }
         };
         loadAll();
-    }, [user]);
+    }, [isAuthReady, userId, token]);
 
     async function markAsRead(notificationId: string) {
-        if (!user) return;
-        // Replaced by user.accessToken from UserContext.
-        // const token = localStorage.getItem('accessToken');
+        if (!token) return;
         const res = await fetch(`${API_URL}/api/notification/${notificationId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user.accessToken}`
+                'Authorization': `Bearer ${token}`
             }
         });
         if (!res.ok) return;
