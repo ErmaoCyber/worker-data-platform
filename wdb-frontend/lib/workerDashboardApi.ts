@@ -8,15 +8,18 @@ export type WorkerBasicInfo = {
   name: string;
   email: string;
   verified: boolean;
-  blockchainAddress?: string;
+  blockchainAddress?: string | null;
 };
 
 export type WorkerDashboardRequest = {
   requestId: string;
   employerId: string;
   employerName: string;
+  requestedInformation: string;
+  checkPurpose: string;
   createdAt: string;
-  reason: string;
+  status: number;
+  expiresAt?: string | null;
 };
 
 export type BlockchainRecord = {
