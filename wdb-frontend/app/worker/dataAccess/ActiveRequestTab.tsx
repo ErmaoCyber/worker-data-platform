@@ -19,8 +19,8 @@ export default function ActiveRequestTab() {
     async function getRows(token: string | null) {
         setIsLoading(true);
         setErrorMsg('');
-        try {
-            var rows = await FetchApi(`/api/Worker/rows`, {
+      try {
+        const rows = await FetchApi(`/api/Worker/rows`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
