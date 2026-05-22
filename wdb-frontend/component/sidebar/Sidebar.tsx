@@ -55,7 +55,7 @@ export default function Sidebar({ role }: SidebarProps) {
   const navItems = role === 'worker' ? workerNavItems : employerNavItems;
 
   return (
-    <aside className="flex h-screen w-56 flex-col bg-gray-900 text-white">
+    <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-gray-900 text-white">
       <div className="flex flex-col items-center border-b border-gray-700 px-4 py-8">
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-500">
           <span className="text-lg font-bold text-white">F</span>

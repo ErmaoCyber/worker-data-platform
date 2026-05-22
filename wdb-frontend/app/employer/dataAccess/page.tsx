@@ -19,26 +19,24 @@ export default function EmployerDataAccessPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-slate-50 px-8 py-8">
+    <main className="p-8">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="mb-6 text-2xl font-semibold text-gray-900">
           Data Access
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          View and manage your worker data requests and approved access.
-        </p>
       </div>
 
-      <div className="mt-6 flex border-b border-slate-200">
+      <div className="flex border-b border-gray-200">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setActiveTab(tab.id)}
             className={`
-              -mb-px border-b-2 px-5 py-2.5 text-sm font-medium transition-colors
+              -mb-px border-b-2 px-5 py-2.5 text-sm font-medium transition-colors cursor-pointer
               ${activeTab === tab.id
-                ? 'border-slate-900 text-slate-900'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                ? 'border-gray-900 text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
               }
             `}
           >
