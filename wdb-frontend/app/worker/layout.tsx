@@ -1,8 +1,11 @@
-import Sidebar from "@/component/sidebar/Sidebar"
-import NotificationBell from "@/app/notification/NotificationBell"
+import Sidebar from "@/component/sidebar/Sidebar";
+import NotificationBell from "@/app/notification/NotificationBell";
 
-
-export default function WorkerLayout({ children }: { children: React.ReactNode }) {
+export default function WorkerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -10,10 +13,10 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
         <header className="flex justify-end items-center px-6 py-3 border-b border-gray-200 bg-white">
           <NotificationBell />
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>
     </div>
-  )
+  );
 }

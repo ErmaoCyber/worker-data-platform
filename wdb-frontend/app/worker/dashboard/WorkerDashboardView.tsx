@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { WorkerDashboardResponse } from "@/lib/workerDashboardApi";
 
 type WorkerDashboardViewProps = {
@@ -31,20 +32,87 @@ function shortenTxHash(txHash: string) {
   return `${txHash.slice(0, 10)}...${txHash.slice(-6)}`;
 }
 
+function formatDateTime(dateString: string) {
+  if (!dateString) return "-";
+
+  return new Date(dateString).toLocaleString("en-NZ", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDate(dateString?: string | null) {
+  if (!dateString) return "-";
+
+  return new Date(dateString).toLocaleDateString("en-NZ", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+}
+
+function getStatusLabel(status: number) {
+  switch (status) {
+    case 1:
+      return "Approved";
+    case 2:
+      return "Rejected";
+    default:
+      return "Pending";
+  }
+}
+
+function getStatusBadgeClass(status: number) {
+  switch (status) {
+    case 1:
+      return "bg-emerald-100 text-emerald-700";
+    case 2:
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-orange-100 text-orange-700";
+  }
+}
+
+function UserIcon() {
+  return (
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-700">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.8}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0"
+        />
+      </svg>
+    </div>
+  );
+}
+
 export default function WorkerDashboardView({
   data,
 }: WorkerDashboardViewProps) {
   return (
-    <main className="min-h-screen bg-slate-50 px-8 py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header>
+    <main className="min-h-screen bg-slate-50 px-12 py-10">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-slate-900">
             Worker Dashboard
           </h1>
+
+          <UserIcon />
         </header>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
+          <h2 className="mb-6 text-lg font-semibold text-slate-900">
             Personal Information
           </h2>
 
@@ -70,45 +138,77 @@ export default function WorkerDashboardView({
               </p>
             </div>
           </div>
-
-          {data.worker.blockchainAddress && (
-            <div className="mt-4 rounded-lg bg-slate-50 p-3">
-              <p className="text-sm text-slate-500">Blockchain address</p>
-              <p className="mt-1 break-all font-mono text-sm text-slate-700">
-                {data.worker.blockchainAddress}
-              </p>
-            </div>
-          )}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            Latest Requests
-          </h2>
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Latest Requests
+            </h2>
+
+            <Link
+              href="/worker/dataAccess"
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+            >
+              View all
+            </Link>
+          </div>
 
           {data.latestRequests.length === 0 ? (
             <p className="text-sm text-slate-500">No requests yet.</p>
           ) : (
-            <div className="divide-y divide-slate-200">
-              {data.latestRequests.map((request) => (
-                <div
-                  key={request.requestId}
-                  className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {request.employerName}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {request.reason}
-                    </p>
-                  </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 text-sm font-semibold text-slate-900">
+                    <th className="pb-4 pr-6">Company</th>
+                    <th className="pb-4 pr-6">Requested Information</th>
+                    <th className="pb-4 pr-6">Check Purpose</th>
+                    <th className="pb-4 pr-6">Requested At</th>
+                    <th className="pb-4 pr-6">Status</th>
+                    <th className="pb-4">Expires At</th>
+                  </tr>
+                </thead>
 
-                  <p className="shrink-0 text-sm text-slate-500">
-                    {new Date(request.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
+                <tbody>
+                  {data.latestRequests.map((request) => (
+                    <tr
+                      key={`${request.requestId}-${request.requestedInformation}`}
+                      className="border-b border-slate-200 text-sm text-slate-900"
+                    >
+                      <td className="py-4 pr-6 font-medium">
+                        {request.employerName}
+                      </td>
+
+                      <td className="py-4 pr-6">
+                        {request.requestedInformation || "-"}
+                      </td>
+
+                      <td className="py-4 pr-6">
+                        {request.checkPurpose || "-"}
+                      </td>
+
+                      <td className="py-4 pr-6">
+                        {formatDateTime(request.createdAt)}
+                      </td>
+
+                      <td className="py-4 pr-6">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
+                            request.status
+                          )}`}
+                        >
+                          {getStatusLabel(request.status)}
+                        </span>
+                      </td>
+
+                      <td className="py-4">
+                        {formatDate(request.expiresAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
@@ -119,6 +219,7 @@ export default function WorkerDashboardView({
               <h2 className="text-lg font-semibold text-slate-900">
                 Blockchain Records
               </h2>
+
               <p className="mt-1 text-sm text-slate-500">
                 Recent permission and data access events recorded on the
                 blockchain.
@@ -151,8 +252,9 @@ export default function WorkerDashboardView({
                       <p className="font-medium text-slate-900">
                         {formatBlockchainAction(record.action)}
                       </p>
+
                       <p className="mt-1 text-sm text-slate-500">
-                        {new Date(record.date).toLocaleString()}
+                        {new Date(record.date).toLocaleString("en-NZ")}
                       </p>
                     </div>
 
