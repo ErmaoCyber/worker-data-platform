@@ -94,6 +94,7 @@ public class NotificationRepoImpl : INotificationRepository
             from e in eg.DefaultIfEmpty()
             join wi in _dbContext.WorkerInfos on n.WorkerInfoId equals wi.Id into wig
             from wi in wig.DefaultIfEmpty()
+            orderby n.CreateAt descending
             select new
             {
                 n.Id,
