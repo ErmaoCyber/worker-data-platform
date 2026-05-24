@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useNotificationRefresh } from '@/context/NotificationRefreshContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5258';
 
@@ -27,6 +28,8 @@ export default function NotificationBell() {
     const [isOpen, setIsOpen] = useState(false);
     // Centralized auth state. The effect below depends on userId/token so it re-runs after login.
     const { userId, token, isAuthReady } = useAuth();
+    // Re-fetch whenever a new SignalR push bumps the refresh key.
+    const { refreshKey } = useNotificationRefresh();
 
     useEffect(() => {
         // Wait until AuthContext finishes restoring; then skip when no user is present.
@@ -44,7 +47,7 @@ export default function NotificationBell() {
             setNotifications(response.data ?? []);
         };
         load();
-    }, [isAuthReady, userId, token]);
+    }, [isAuthReady, userId, token, refreshKey]);
 
     async function markAsRead(notificationId: string) {
         if (!token) return;
