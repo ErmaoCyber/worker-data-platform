@@ -67,6 +67,11 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         {
             // if the record exist, then updat the vaule and save the change in db.
             existing.Value = workerInfo.Value;
+            // only overwrite category when caller actually provided one, so the profile-edit flow (which omits it) does not wipe it
+            if (workerInfo.Category != null)
+            {
+                existing.Category = workerInfo.Category;
+            }
             existing.UpdatedAt = DateTime.UtcNow; // update the updated time to current time.
             await _context.SaveChangesAsync(cancellationToken);
             return existing;
