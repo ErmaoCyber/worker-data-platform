@@ -43,7 +43,11 @@ public class WorkerInfo
     /// The value of the information.
     /// </summary>
     [Column("value")]
-    public required string Value { get; set; }
+    public string? Value { get; set; }
+
+    [Column("category")]
+    public string? Category { get; set; }
+
     public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
 }
 
