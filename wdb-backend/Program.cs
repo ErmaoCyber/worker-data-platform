@@ -39,13 +39,15 @@ using Microsoft.EntityFrameworkCore;
   // Infrastructure
   builder.Services.AddInfrastructure(builder.Configuration);
 
-  // Core services
-  builder.Services.AddScoped<IWorkerService, WorkerServiceImpl>();
-  builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
-  builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
-  builder.Services.AddScoped<IEmployerService, EmployerServiceImpl>();
-  builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
-  builder.Services.AddScoped<IActiveAccessService, ActiveAccessServiceImpl>();
+// Core services
+builder.Services.AddScoped<IWorkerService, WorkerServiceImpl>();
+builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
+builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
+builder.Services.AddScoped<IEmployerService, EmployerServiceImpl>();
+builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
+builder.Services.AddScoped<IEmployerSentRequestService, EmployerSentRequestServiceImpl>();
+builder.Services.AddScoped<IActiveAccessService, ActiveAccessServiceImpl>();
+builder.Services.AddScoped<IEmployerActiveAccessService, EmployerActiveAccessServiceImpl>();
 
   // Use cases
   builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
