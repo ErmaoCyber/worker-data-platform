@@ -3,7 +3,7 @@ import { renderWithAuth } from "../utils/renderWithAuth";
 import ProfilePage from "@/app/worker/profile/page";
 import LoginPage from "@/app/login/page"
 import EmployerDashboardPage from "@/app/employer/dashboard/page"
-import EmployerRequestsPage from "@/app/employer/requests/page"
+import EmployerRequestsPage from "@/app/employer/requests/RequestModel"
 
 jest.mock('next/navigation', () => ({
     useRouter: () => ({ push: jest.fn() })

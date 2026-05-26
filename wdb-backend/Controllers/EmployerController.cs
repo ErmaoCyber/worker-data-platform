@@ -181,7 +181,7 @@ public class EmployerController : ControllerBase
 
         try
         {
-            await _addFlexibleWorkerInfoUsecase.ExecuteAsync(request.WorkerEmail, request.Category, request.Desc, employerId);
+            await _addFlexibleWorkerInfoUsecase.ExecuteAsync(request.WorkerEmail, request.Category, request.Desc, request.Reason, employerId);
             return Ok();
         }
         catch (KeyNotFoundException)

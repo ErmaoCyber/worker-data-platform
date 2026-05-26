@@ -12,9 +12,9 @@ public class RequestServiceImpl : IRequestService
         _requestRepository = requestRepository;
     }
 
-   public async Task<Request> CreateAsync(Guid employerId, Guid workerId, string reason, CancellationToken cancellationToken = default)
+    public async Task<Request> CreateAsync(Guid employerId, Guid workerId, string reason, CancellationToken cancellationToken = default)
     {
-        var resultRequest = await _requestRepository.AddAsync(employerId, workerId, reason, default) ?? throw new KeyNotFoundException();
+        var resultRequest = await _requestRepository.AddAsync(employerId, workerId, reason, cancellationToken) ?? throw new KeyNotFoundException();
         return resultRequest;
     }
 

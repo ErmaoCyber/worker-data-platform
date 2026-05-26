@@ -5,8 +5,8 @@ namespace wdb_backend.DTOs;
 
 public class CreateRequestUsecaseDTO
 {
-    public string Email { get; set; }
-    public List<string> InfoDesc { get; set; }
-    public string Reason { get; set; }
+    public required string Email { get; set; }
+    public required List<string> InfoDesc { get; set; }
+    public required string Reason { get; set; }
 }
 

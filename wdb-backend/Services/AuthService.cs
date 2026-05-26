@@ -86,7 +86,7 @@ public class AuthService<T> where T : class, IUser, new()
             return (false, "User not found.", null);
         }
 
-        if (! _hasher.VerifyPassword(password, user.Password))
+        if (!_hasher.VerifyPassword(password, user.Password))
         {
             return (false, "Incorrect password.", null);
         }

@@ -11,6 +11,7 @@ public class AddFlexibleWorkerInfoUsecaseImpl : IAddFlexibleWorkerInfoUsecase
     private readonly IRequestService _requestService;
 
 
+
     // The constructor injects the necessary services for the use case to function.
     public AddFlexibleWorkerInfoUsecaseImpl(IWorkerService workerService, IWorkerInfoService workerInfoService, IRequestService requestService)
     {
@@ -23,7 +24,7 @@ public class AddFlexibleWorkerInfoUsecaseImpl : IAddFlexibleWorkerInfoUsecase
     // This use case allows an employer to request a worker to add flexible information that is not predefined in the system.
     // For example, an employer might want to request a worker to add their LinkedIn profile or a personal statement. 
     // The employer can specify the category and description of the information they want the worker to add. The system will create a new worker info entry with an empty value and send a request to the worker to fill in the information.
-    public async Task ExecuteAsync(string workerEmail, string category, string desc, Guid employerId, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(string workerEmail, string category, string desc, string reason, Guid employerId, CancellationToken cancellationToken = default)
     {
         var worker = await _workerService.GetByEmailAsync(workerEmail);
         var workerInfo = new WorkerInfo
@@ -34,6 +35,6 @@ public class AddFlexibleWorkerInfoUsecaseImpl : IAddFlexibleWorkerInfoUsecase
             Value = ""
         };
         await _workerInfoService.CreateAsync(worker.Id, workerInfo);
-        await _requestService.CreateAsync(employerId, worker.Id, desc, cancellationToken);
+        await _requestService.CreateAsync(employerId, worker.Id, reason, cancellationToken);
     }
 }
