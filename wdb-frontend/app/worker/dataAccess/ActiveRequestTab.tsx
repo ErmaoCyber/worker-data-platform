@@ -3,24 +3,24 @@
 import RequestRow, { Row } from "../../components/RequestRow"
 import { useState, useEffect } from "react";
 import { FetchApi } from '../../../lib/api';
+import { useAuth } from "@/context/AuthContext";
 
 export default function ActiveRequestTab() {
+    const { token } = useAuth();
     const [rows, setRows] = useState<Row[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     useEffect(() => {
-        const token = localStorage.getItem('accessToken');
         getRows(token);
-    }, [refreshTrigger]);
+    }, [refreshTrigger, token]);
 
     async function getRows(token: string | null) {
         setIsLoading(true);
         setErrorMsg('');
-        try {
-            var rows = await FetchApi(
-                `/api/Worker/rows`, {
+      try {
+        const rows = await FetchApi(`/api/Worker/rows`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -52,7 +52,6 @@ export default function ActiveRequestTab() {
             {!isLoading && rows.map((item) => (
                 <RequestRow key={item.id} {...item} onComplete={handleComplete} />
             ))}
-
         </div>
     );
 }

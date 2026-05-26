@@ -35,12 +35,16 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
 
     const combined = [...checkedFields, ... checkedUnlistedFields];
 
-    const toggleField = (label: string) => {
+    // toggle by id and keep the two lists independent, so a collision in labels does not double-flip across listed and unlisted
+    const toggleListed = (id: string) => {
         setCheckedFields((prev) =>
-            prev.map((f) => f.label === label ? { ...f, checked: !f.checked } : f)
+            prev.map((f) => f.id === id ? { ...f, checked: !f.checked } : f)
         );
+    };
+
+    const toggleUnlisted = (id: string) => {
         setUnlistedFields((prev) =>
-            prev.map((f) => f.label === label ? { ...f, checked: !f.checked } : f)
+            prev.map((f) => f.id === id ? { ...f, checked: !f.checked } : f)
         );
     };
 
@@ -63,6 +67,11 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
 
     async function changePermission(status: "approve" | "reject") {
         const checkedIds = combined.filter((f) => f.checked).map((f) => f.id);
+        // backend rejects approve without an expiry date, so catch it here and show a friendly message instead of a raw 400
+        if (status === "approve" && !expiryDate) {
+            setErrorMsg("Please select an expiry date before approving.");
+            return;
+        }
         try {
             await Promise.all(
                 checkedIds.map((permissionid) =>
@@ -71,12 +80,13 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                         headers: {
                             "Content-Type": "application/json",
                         },
-                        body: JSON.stringify(
-                            expiryDate? expiryDate : null
-                        ),
+                        body: status === "approve"
+                            ? JSON.stringify({ expiryDate: expiryDate || null })
+                            : undefined,
                     }
                     ))
             );
+            setErrorMsg("");
             onComplete();
         } catch (error) {
             setErrorMsg(`${error}`)
@@ -99,7 +109,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                             <input
                                 type="checkbox"
                                 checked={field.checked}
-                                onChange={() => toggleField(field.label)}
+                                onChange={() => toggleListed(field.id)}
                                 className="cursor-pointer"
 
                             />
@@ -112,7 +122,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                             <input
                                 type="checkbox"
                                 checked={field.checked}
-                                onChange={() => toggleField(field.label)}
+                                onChange={() => toggleUnlisted(field.id)}
                                 className="cursor-pointer"
 
                             /> 

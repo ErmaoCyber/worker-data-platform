@@ -103,7 +103,7 @@ namespace wdb_backend.Controllers
             try
             {
                 var workerId = GetCurrentWorkerId();
-
+                
                 var updated = await _workerInfoService.UpdateAsync(workerId, info);
                 return Ok(updated);
             }

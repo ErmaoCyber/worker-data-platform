@@ -7,6 +7,7 @@ import {
   type EmployerDashboardData,
 } from '@/lib/employerDashboardApi';
 import EmployerDashboardView from './EmployerDashboardView';
+import { useAuth } from '@/context/AuthContext';
 
 export default function EmployerDashboardPage() {
   const router = useRouter();
@@ -15,17 +16,30 @@ export default function EmployerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Read auth state from AuthContext
+  const {
+    token: accessToken,
+    role,
+    isAuthReady,
+  } = useAuth();
+
   useEffect(() => {
     async function loadDashboard() {
-      const accessToken = localStorage.getItem('accessToken');
-      const role = localStorage.getItem('role');
+      // Wait until AuthContext finishes restoring auth data from localStorage
+      if (!isAuthReady) {
+        return;
+      }
 
+      // Only logged-in employers can access this page
       if (!accessToken || role !== 'employer') {
         router.push('/login');
         return;
       }
 
       try {
+        setLoading(true);
+        setError('');
+
         const dashboardData = await getEmployerDashboardMe(accessToken);
         setData(dashboardData);
       } catch {
@@ -36,9 +50,9 @@ export default function EmployerDashboardPage() {
     }
 
     loadDashboard();
-  }, [router]);
+  }, [isAuthReady, accessToken, role, router]);
 
-  if (loading) {
+  if (!isAuthReady || loading) {
     return (
       <main className="min-h-screen bg-slate-50 px-8 py-8">
         <p className="text-slate-600">Loading employer dashboard...</p>

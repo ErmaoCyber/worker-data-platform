@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using wdb_backend.Abstractions;
+using wdb_backend.DTOs;
 using wdb_backend.Models;
 using System.Security.Claims;
 
@@ -15,16 +16,22 @@ public class WorkerController : ControllerBase
 {
     private readonly IPermissionService _permissionService;
     private readonly IRequestService _requestService;
-
     private readonly IWorkerInfoService _workerInfoService;
     private readonly IEmployerService _employerService;
+    private readonly IActiveAccessService _activeAccessService;
 
-    public WorkerController(IPermissionService permissionService, IRequestService requestService, IWorkerInfoService workerInfoService, IEmployerService employerService)
+    public WorkerController(
+        IPermissionService permissionService,
+        IRequestService requestService,
+        IWorkerInfoService workerInfoService,
+        IEmployerService employerService,
+        IActiveAccessService activeAccessService)
     {
         _permissionService = permissionService;
         _requestService = requestService;
         _workerInfoService = workerInfoService;
         _employerService = employerService;
+        _activeAccessService = activeAccessService;
     }
 
     [HttpGet("{workerId}/permissions")]
@@ -57,30 +64,35 @@ public class WorkerController : ControllerBase
     public async Task<ActionResult<Request>> GetAllWorkerInfo(Guid workerId)
     {
         var result = await _workerInfoService.GetAllAsync(workerId);
+
         if (result == null)
         {
-            return NotFound(new { error = "wORKER_NOT_FOUND" });
+            return NotFound(new { error = "WORKER_NOT_FOUND" });
         }
 
         return Ok(result);
-
     }
-
 
     public class FieldResponse
     {
         public required string Id { get; set; }
+
         public required string Label { get; set; }
+
         public required bool Checked { get; set; } = false;
     }
 
     public class RequestRowResponse
     {
         public required string Id { get; set; }
+
         public required string Company { get; set; }
+
         public required string Date { get; set; }
-        public required List<FieldResponse> listedInfo { get; set; }
-        public required List<FieldResponse> unlistedInfo { get; set; }
+
+        public required List<FieldResponse> ListedInfo { get; set; }
+        public required List<FieldResponse> UnlistedInfo { get; set; }
+
         public required string Reason { get; set; }
     }
 
@@ -88,25 +100,33 @@ public class WorkerController : ControllerBase
     [HttpGet("rows")]
     public async Task<ActionResult> GetRows()
     {
-
         var workerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (workerId == null) return Unauthorized();
+
+        if (workerId == null)
+        {
+            return Unauthorized();
+        }
+
         var workerGuid = Guid.Parse(workerId);
 
         var requests = await _requestService.GetAllByWorkerIdAsync(workerGuid);
         var workerInfo = await _workerInfoService.GetAllAsync(workerGuid);
         var permissions = await _permissionService.GetAllByWorkerIdAsync(workerGuid, 0);
-        var groupedPermissions = permissions.GroupBy(p => p.RequestId);
+        var groupedPermissions = permissions.GroupBy(permission => permission.RequestId);
 
         var employers = await _employerService.GetDistinctEmployers();
-        var employerMap = employers.ToDictionary(e => e.Id);
+        var employerMap = employers.ToDictionary(employer => employer.Id);
 
         var rows = new List<RequestRowResponse>();
 
         foreach (var group in groupedPermissions)
         {
-            var request = requests.FirstOrDefault(p => p.Id == group.Key);
-            if (request == null) continue;
+            var request = requests.FirstOrDefault(requestItem => requestItem.Id == group.Key);
+
+            if (request == null)
+            {
+                continue;
+            }
 
             employerMap.TryGetValue(request.EmployerId, out var employer);
 
@@ -131,72 +151,35 @@ public class WorkerController : ControllerBase
                         Checked = false
                     });
                 }
-                
+
             }
+
             rows.Add(new RequestRowResponse
             {
                 Id = request.Id.ToString(),
-                Company = employer?.Name.ToString() ?? "Unknown",
+                Company = employer?.Name ?? "Unknown",
                 Date = request.CreatedAt.ToString("dd.MM.yyyy hh:mm tt"),
-                listedInfo = listedInfos,
-                unlistedInfo = unlistedInfos,
+                ListedInfo = listedInfos,
+                UnlistedInfo = unlistedInfos,
                 Reason = request.Reason
             });
-
         }
-        ;
+
         return Ok(rows);
-
-    }
-
-
-    public class ActiveAccessRow
-    {
-        public required string Id { get; set; }
-        public required string Company { get; set; }
-        public required string Date { get; set; }
-        public required List<FieldResponse> WorkerInfo { get; set; }
-        public required string Reason { get; set; }
     }
 
     [HttpGet("{workerId}/active-access")]
-    public async Task<ActionResult> GetActiveAccess(Guid workerId)
+    public async Task<ActionResult<List<ActiveAccessDto>>> GetActiveAccess(
+        Guid workerId,
+        [FromQuery] string? company = null,
+        [FromQuery] string? dataType = null)
     {
-        var requests = await _requestService.GetAllByWorkerIdAsync(workerId);
-        var permissions = await _permissionService.GetAllByWorkerIdAsync(workerId, 1);
-        var workerInfo = await _workerInfoService.GetAllAsync(workerId);
+        var result = await _activeAccessService.GetActiveAccessAsync(
+            workerId,
+            company,
+            dataType);
 
-        var rows = new List<ActiveAccessRow>();
-
-        foreach (var req in requests)
-        {
-            var approvedPermissions = permissions.Where(p => p.RequestId == req.Id).ToList();
-            if (!approvedPermissions.Any()) continue;
-
-            var fields = new List<FieldResponse>();
-            foreach (var p in approvedPermissions)
-            {
-                var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
-                    fields.Add(new FieldResponse
-                    {
-                        Id = p.Id.ToString(),
-                        Label = info?.Desc ?? "Unknown",
-                        Checked = false
-                    });
-            }
-
-            var employer = await _employerService.GetEmployerInfoAsync(req.EmployerId);
-            rows.Add(new ActiveAccessRow
-            {
-                Id = req.Id.ToString(),
-                Company = employer?.Name.ToString() ?? "Unknown",
-                Date = req.CreatedAt.ToString("dd.MM.yyyy hh:mm tt"),
-                WorkerInfo = fields,
-                Reason = req.Reason
-            });
-        }
-
-        return Ok(rows);
+        return Ok(result);
     }
 
 
@@ -255,6 +238,3 @@ public class WorkerController : ControllerBase
 
 
 }
-
-
-
