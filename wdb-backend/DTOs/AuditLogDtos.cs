@@ -2,24 +2,41 @@ namespace wdb_backend.Dtos;
 
 /// <summary>
 /// A single audit log record returned to the worker audit log page.
-/// This DTO hides blockchain complexity and gives the frontend a clear structure to display.
+/// This DTO gives the frontend both user-friendly display fields and technical blockchain proof.
 /// </summary>
 public class AuditLogRecordDto
 {
     /// <summary>
-    /// The action recorded on the blockchain.
+    /// Raw action value recorded on the blockchain.
     /// Example: PermissionRequested, PermissionApproved, PermissionRejected, DataViewed, PermissionRevoked.
     /// </summary>
     public string Action { get; set; } = string.Empty;
 
     /// <summary>
-    /// The employer address involved in this blockchain record.
-    /// This may be shown in a shortened format on the frontend.
+    /// User-friendly action label for display.
+    /// Example: Access Approved, Data Viewed, Access Revoked.
+    /// </summary>
+    public string ActionLabel { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Short user-friendly explanation of what happened.
+    /// </summary>
+    public string UserMessage { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Company or employer name matched from the database.
+    /// If no matching employer is found, the frontend can fall back to the employer address.
+    /// </summary>
+    public string EmployerName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The employer blockchain address involved in this record.
+    /// This is mainly used as technical proof or fallback display.
     /// </summary>
     public string EmployerAddress { get; set; } = string.Empty;
 
     /// <summary>
-    /// The worker address involved in this blockchain record.
+    /// The worker blockchain address involved in this record.
     /// This is mainly useful for technical checking.
     /// </summary>
     public string WorkerAddress { get; set; } = string.Empty;
@@ -32,6 +49,7 @@ public class AuditLogRecordDto
 
     /// <summary>
     /// The block hash where this transaction was included.
+    /// This is optional because the current blockchain response does not provide it yet.
     /// </summary>
     public string? BlockHash { get; set; }
 

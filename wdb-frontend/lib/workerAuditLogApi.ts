@@ -1,5 +1,8 @@
 export interface AuditLogRecord {
   action: string;
+  actionLabel: string;
+  userMessage: string;
+  employerName: string;
   employerAddress: string;
   workerAddress: string;
   transactionHash: string;

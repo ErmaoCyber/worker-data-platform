@@ -1,17 +1,19 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5258";
+export interface WorkerDashboardResponse {
+  worker: WorkerBasicInfo;
+  latestRequests: WorkerDashboardRequest[];
+  blockchainRecords: BlockchainRecord[];
+  blockchainAvailable: boolean;
+}
 
-const BASE_URL = `${API_BASE_URL}/api/worker/dashboard`;
-
-export type WorkerBasicInfo = {
+export interface WorkerBasicInfo {
   id: string;
   name: string;
   email: string;
   verified: boolean;
   blockchainAddress?: string | null;
-};
+}
 
-export type WorkerDashboardRequest = {
+export interface WorkerDashboardRequest {
   requestId: string;
   employerId: string;
   employerName: string;
@@ -20,36 +22,34 @@ export type WorkerDashboardRequest = {
   createdAt: string;
   status: number;
   expiresAt?: string | null;
-};
+}
 
-export type BlockchainRecord = {
+export interface BlockchainRecord {
+  action: string;
+  actionLabel: string;
+  userMessage: string;
+  employerName: string;
   employerAddress: string;
   workerAddress: string;
-  action: string;
   txHash: string;
   date: string;
-};
+}
 
-export type WorkerDashboardResponse = {
-  worker: WorkerBasicInfo;
-  latestRequests: WorkerDashboardRequest[];
-  blockchainRecords: BlockchainRecord[];
-  blockchainAvailable: boolean;
-};
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:5258';
 
 export async function getWorkerDashboard(
-  workerId: string
+  workerId: string,
 ): Promise<WorkerDashboardResponse> {
-  const response = await fetch(`${BASE_URL}/${workerId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `${API_BASE_URL}/api/worker/dashboard/${workerId}`,
+    {
+      method: 'GET',
     },
-    cache: "no-store",
-  });
+  );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch worker dashboard");
+    throw new Error('Failed to load worker dashboard.');
   }
 
   return response.json();
