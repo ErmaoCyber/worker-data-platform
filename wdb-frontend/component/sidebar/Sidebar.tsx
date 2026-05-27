@@ -29,7 +29,7 @@ const workerNavItems = [
   {
     label: 'Audit Log',
     icon: ArrowLeftRight,
-    href: '/worker/audit-log',
+    href: '/worker/auditLog',
   },
   {
     label: 'Personal Data',

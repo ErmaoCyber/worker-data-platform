@@ -33,9 +33,21 @@ public class WorkerDashboardRequestDto
 
 public class BlockchainRecordDto
 {
+    public string Action { get; set; } = string.Empty;
+
+    // User-friendly action label for dashboard display.
+    public string ActionLabel { get; set; } = string.Empty;
+
+    // Short explanation for normal users.
+    public string UserMessage { get; set; } = string.Empty;
+
+    // Company name matched from the employer table.
+    public string EmployerName { get; set; } = string.Empty;
+
+    // Technical blockchain fields kept as proof, but not shown as the main content.
     public string EmployerAddress { get; set; } = string.Empty;
     public string WorkerAddress { get; set; } = string.Empty;
-    public string Action { get; set; } = string.Empty;
     public string TxHash { get; set; } = string.Empty;
+
     public DateTime Date { get; set; }
 }

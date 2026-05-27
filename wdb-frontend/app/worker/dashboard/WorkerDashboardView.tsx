@@ -1,78 +1,61 @@
-import Link from "next/link";
-import type { WorkerDashboardResponse } from "@/lib/workerDashboardApi";
+import Link from 'next/link';
+import type { WorkerDashboardResponse } from '@/lib/workerDashboardApi';
 
 type WorkerDashboardViewProps = {
   data: WorkerDashboardResponse;
 };
 
-function formatBlockchainAction(action: string) {
-  switch (action) {
-    case "PermissionRequested":
-      return "Permission requested";
-    case "PermissionApproved":
-      return "Permission approved";
-    case "PermissionRejected":
-      return "Permission rejected";
-    case "DataViewed":
-      return "Data viewed";
-    case "PermissionRevoked":
-      return "Permission revoked";
-    default:
-      return action;
-  }
-}
-
 function shortenAddress(address: string) {
-  if (!address) return "";
+  if (!address) return 'Not available';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 function shortenTxHash(txHash: string) {
-  if (!txHash) return "";
+  if (!txHash) return 'Not available';
   return `${txHash.slice(0, 10)}...${txHash.slice(-6)}`;
 }
 
 function formatDateTime(dateString: string) {
-  if (!dateString) return "-";
+  if (!dateString) return '-';
 
-  return new Date(dateString).toLocaleString("en-NZ", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Date(dateString).toLocaleString('en-NZ', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 function formatDate(dateString?: string | null) {
-  if (!dateString) return "-";
+  if (!dateString) return '-';
 
-  return new Date(dateString).toLocaleDateString("en-NZ", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
+  return new Date(dateString).toLocaleDateString('en-NZ', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
   });
 }
 
 function getStatusLabel(status: number) {
   switch (status) {
     case 1:
-      return "Approved";
+      return 'Approved';
     case 2:
-      return "Rejected";
+      return 'Rejected';
     default:
-      return "Pending";
+      return 'Pending';
   }
 }
 
 function getStatusBadgeClass(status: number) {
   switch (status) {
     case 1:
-      return "bg-emerald-100 text-emerald-700";
+      return 'bg-emerald-100 text-emerald-700';
     case 2:
-      return "bg-red-100 text-red-700";
+      return 'bg-red-100 text-red-700';
     default:
-      return "bg-orange-100 text-orange-700";
+      return 'bg-orange-100 text-orange-700';
   }
 }
 
@@ -134,7 +117,7 @@ export default function WorkerDashboardView({
             <div>
               <p className="text-sm text-slate-500">Status</p>
               <p className="mt-1 font-medium text-slate-900">
-                {data.worker.verified ? "Verified" : "Not verified"}
+                {data.worker.verified ? 'Verified' : 'Not verified'}
               </p>
             </div>
           </div>
@@ -181,11 +164,11 @@ export default function WorkerDashboardView({
                       </td>
 
                       <td className="py-4 pr-6">
-                        {request.requestedInformation || "-"}
+                        {request.requestedInformation || '-'}
                       </td>
 
                       <td className="py-4 pr-6">
-                        {request.checkPurpose || "-"}
+                        {request.checkPurpose || '-'}
                       </td>
 
                       <td className="py-4 pr-6">
@@ -195,7 +178,7 @@ export default function WorkerDashboardView({
                       <td className="py-4 pr-6">
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
-                            request.status
+                            request.status,
                           )}`}
                         >
                           {getStatusLabel(request.status)}
@@ -217,28 +200,36 @@ export default function WorkerDashboardView({
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
-                Blockchain Records
+                Recent Access History
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Recent permission and data access events recorded on the
-                blockchain.
+                Recent company access-related actions recorded on blockchain.
               </p>
             </div>
 
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${data.blockchainAvailable
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-red-100 text-red-700"
-                }`}
-            >
-              {data.blockchainAvailable ? "Connected" : "Unavailable"}
-            </span>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/worker/auditLog"
+                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+              >
+                View all
+              </Link>
+
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${data.blockchainAvailable
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-red-100 text-red-700'
+                  }`}
+              >
+                {data.blockchainAvailable ? 'Connected' : 'Unavailable'}
+              </span>
+            </div>
           </div>
 
           {data.blockchainRecords.length === 0 ? (
             <p className="text-sm text-slate-500">
-              No blockchain records available yet.
+              No access history records available yet.
             </p>
           ) : (
             <div className="divide-y divide-slate-200">
@@ -250,11 +241,15 @@ export default function WorkerDashboardView({
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-medium text-slate-900">
-                        {formatBlockchainAction(record.action)}
+                        {record.actionLabel}
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-600">
+                        {record.userMessage}
                       </p>
 
                       <p className="mt-1 text-sm text-slate-500">
-                        {new Date(record.date).toLocaleString("en-NZ")}
+                        {formatDateTime(record.date)}
                       </p>
                     </div>
 
@@ -263,25 +258,25 @@ export default function WorkerDashboardView({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                  <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
                     <div>
-                      <p className="text-slate-500">Employer address</p>
-                      <p className="font-mono text-slate-700">
-                        {shortenAddress(record.employerAddress)}
+                      <p className="text-slate-500">Company</p>
+                      <p className="font-medium text-slate-800">
+                        {record.employerName}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-slate-500">Worker address</p>
+                      <p className="text-slate-500">Blockchain proof</p>
                       <p className="font-mono text-slate-700">
-                        {shortenAddress(record.workerAddress)}
-                      </p>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <p className="text-slate-500">Transaction hash</p>
-                      <p className="break-all font-mono text-slate-700">
                         {shortenTxHash(record.txHash)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-slate-500">Technical address</p>
+                      <p className="font-mono text-slate-500">
+                        {shortenAddress(record.employerAddress)}
                       </p>
                     </div>
                   </div>
