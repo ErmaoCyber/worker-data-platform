@@ -70,17 +70,16 @@ describe("BasicProfileCard", () => {
         // click Done button
         fireEvent.click(screen.getByText("Done"));
 
-        // wait for all async onSave calls to finish
         await waitFor(() => {
-            expect(mockOnSave).toHaveBeenCalledWith("firstname", "John");
-            expect(mockOnSave).toHaveBeenCalledWith("lastname", "Doe");
-            expect(mockOnSave).toHaveBeenCalledWith("phonenumber", "021111111");
-            expect(mockOnSave).toHaveBeenCalledWith("email", "john@example.com");
-            expect(mockOnSave).toHaveBeenCalledWith("country", "New Zealand");
-            expect(mockOnSave).toHaveBeenCalledWith("city", "Wellington");
-            expect(mockOnSave).toHaveBeenCalledWith("street", "123 Main St");
-            expect(mockOnSave).toHaveBeenCalledWith("postcode", "6011");
-            expect(mockOnSave).toHaveBeenCalledWith("gender", "male");
+            expect(mockOnSave).toHaveBeenCalledWith("firstname", "John", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("lastname", "Doe", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("phonenumber", "021111111", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("email", "john@example.com", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("country", "New Zealand", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("city", "Wellington", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("street", "123 Main St", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("postcode", "6011", "PersonaInformation");
+            expect(mockOnSave).toHaveBeenCalledWith("gender", "male", "PersonaInformation");
         });
 
         // should return to display mode after saving

@@ -17,4 +17,5 @@ public interface IWorkerInfoService
     Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken);
 
     Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken);
+    Dictionary<string, List<string>> GetCategoryFields();
 }

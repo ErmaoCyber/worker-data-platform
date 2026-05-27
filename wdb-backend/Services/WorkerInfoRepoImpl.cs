@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
 using wdb_backend.Data;
+using wdb_backend.Enums;
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
@@ -67,11 +68,7 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         {
             // if the record exist, then updat the vaule and save the change in db.
             existing.Value = workerInfo.Value;
-            // only overwrite category when caller actually provided one, so the profile-edit flow (which omits it) does not wipe it
-            if (workerInfo.Category != null)
-            {
-                existing.Category = workerInfo.Category;
-            }
+            existing.Category = workerInfo.Category;
             existing.UpdatedAt = DateTime.UtcNow; // update the updated time to current time.
             await _context.SaveChangesAsync(cancellationToken);
             return existing;
@@ -106,17 +103,7 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         return availableInfos;
     }
 
-    // public async Task<List<WorkerInfo>> GetRequestedWorkerInfos1(Guid workerId, Guid employerId,CancellationToken cancellationToken = default)
-    // {
-    //     var workerInfos = await _context.WorkerInfos
-    //         .Where(w => w.WorkerId == workerId &&
-    //                     w.Permissions.Any(p => p.Request.EmployerId == employerId &&
-    //                                            p.Status == PermissionStatus.Pending &&
-    //                                            p.Status == PermissionStatus.Approved))
-    //         .ToListAsync(cancellationToken);
-    //
-    //     return workerInfos; // transform list to hashset.
-    // }
+
     public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
     {
         var requestedInfos = await _context.WorkerInfos

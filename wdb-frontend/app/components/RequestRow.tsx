@@ -9,6 +9,7 @@ export interface Field {
     id: string;
     label: string;
     checked: boolean;
+    category?: string;
 }
 
 export interface Row {
@@ -33,7 +34,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
     const [expiryDate, setExpiryDate] = useState("");
     const [showAddInfoModal, setShowAddInfoModal] = useState(false);
 
-    const combined = [...checkedFields, ... checkedUnlistedFields];
+    const combined = [...checkedFields, ...checkedUnlistedFields];
 
     // toggle by id and keep the two lists independent, so a collision in labels does not double-flip across listed and unlisted
     const toggleListed = (id: string) => {
@@ -50,11 +51,11 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
 
     const unToggleFields = () => {
         setCheckedFields((prev) =>
-            prev.map((f) => ({ ...f, checked: false})
-        ));
+            prev.map((f) => ({ ...f, checked: false })
+            ));
         setUnlistedFields((prev) =>
-            prev.map((f) => ({ ...f, checked: false})
-        ));
+            prev.map((f) => ({ ...f, checked: false })
+            ));
     }
 
 
@@ -125,7 +126,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                                 onChange={() => toggleUnlisted(field.id)}
                                 className="cursor-pointer"
 
-                            /> 
+                            />
                             {field.label}
                             <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center">
                                 <span className="text-white font-bold text-sm"> ! </span>
@@ -142,14 +143,14 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                 <button className="bg-green-500 hover:bg-green-600 text-white rounded-md px-4 py-2 text-base disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
                     disabled={checkedFields.filter(f => f.checked).length === 0 && checkedUnlistedFields.filter(f => f.checked).length === 0}
                     onClick={() => {
-                        if (checkedUnlistedFields.filter(f => f.checked).length > 0 ) {
+                        if (checkedUnlistedFields.filter(f => f.checked).length > 0) {
                             setShowAddInfoModal(true)
                         } else {
                             setShowModal(true);
                         }
                         setShowExpiry(true);
                         setPendingAction("approve");
-                        
+
                     }}
                 >✔</button>
                 <button className="bg-red-500 hover:bg-red-600 text-white rounded-md px-4 py-2 text-base disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
@@ -162,23 +163,23 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
 
                 >✖</button>
                 {errorMsg && <p className="text-sm text-red-500">{errorMsg}</p>}
-                
+
                 {showAddInfoModal && (
                     <AddPersonalInfoModal
                         company={company}
-                        unlistedInfoDesc= {checkedUnlistedFields
-                                .filter((f) => f.checked)
-                                .map((f) => f.label)}
+                        unlistedInfoDesc={checkedUnlistedFields
+                            .filter((f) => f.checked)
+                            .map((f) => ({ desc: f.label, category: f.category ?? '' }))}
                         onCancel={() => {
                             setShowAddInfoModal(false);
                             unToggleFields()
                         }}
-                        
+
                         onNext={() => {
                             setShowAddInfoModal(false);
                             setShowModal(true);
                         }}
-                        
+
                     />
                 )}
 
@@ -203,7 +204,7 @@ export default function RequestRow({ id, company, date, listedInfo, unlistedInfo
                     />
                 )}
 
-                
+
             </div>
 
         </div>

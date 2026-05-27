@@ -45,6 +45,7 @@ builder.Services.AddScoped<IRequestService, RequestServiceImpl>();
 builder.Services.AddScoped<IPermissionService, PermissionServiceImpl>();
 builder.Services.AddScoped<IEmployerService, EmployerServiceImpl>();
 builder.Services.AddScoped<IWorkerInfoService, WorkerInfoServiceImpl>();
+
 builder.Services.AddScoped<IEmployerSentRequestService, EmployerSentRequestServiceImpl>();
 builder.Services.AddScoped<IActiveAccessService, ActiveAccessServiceImpl>();
 builder.Services.AddScoped<IEmployerActiveAccessService, EmployerActiveAccessServiceImpl>();
@@ -53,6 +54,8 @@ builder.Services.AddScoped<IWorkerAuditLogService, WorkerAuditLogServiceImpl>();
 // Use cases
 builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
 builder.Services.AddScoped<IFindWorkerInfosByEmailUsecase, FindWorkerInfosByEmailUsecaseImpl>();
+builder.Services.AddScoped<IAddFlexibleWorkerInfoUsecase, AddFlexibleWorkerInfoUsecaseImpl>();
+
 
 // Repositories
 builder.Services.AddScoped<IWorkerRepository, WorkerRepoImpl>();
@@ -105,7 +108,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<NotificationsHub>("/hubs/notifications");
+app.MapHub<NotificationsHub>("/hubs/notifications");  // map notification hub
 app.MapOpenApi();
 
 app.Run();

@@ -135,14 +135,16 @@ public class WorkerController : ControllerBase
             foreach (var p in group)
             {
                 var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
-                if (info?.Value != null) {
+                if (info?.Value != null)
+                {
                     listedInfos.Add(new FieldResponse
                     {
                         Id = p.Id.ToString(),
                         Label = info.Desc ?? "Unknown",
                         Checked = false
                     });
-                } else if (info?.Value == null)
+                }
+                else if (info?.Value == null)
                 {
                     unlistedInfos.Add(new FieldResponse
                     {
@@ -182,59 +184,11 @@ public class WorkerController : ControllerBase
         return Ok(result);
     }
 
-
-    // [HttpGet("unlistedinfo")]
-    // public async Task<ActionResult> GetUnlistedeInfo()
-    // {
-
-    //     var workerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-    //     if (workerId == null) return Unauthorized();
-    //     var workerGuid = Guid.Parse(workerId);
-
-    //     var requests = await _requestService.GetAllByWorkerIdAsync(workerGuid);
-    //     var workerInfo = await _workerInfoService.GetAllAsync(workerGuid);
-    //     var permissions = await _permissionService.GetAllByWorkerIdAsync(workerGuid, 0);
-    //     var groupedPermissions = permissions.GroupBy(p => p.RequestId);
-
-    //     var employers = await _employerService.GetDistinctEmployers();
-    //     var employerMap = employers.ToDictionary(e => e.Id);
-
-    //     var rows = new List<RequestRowResponse>();
-
-    //     foreach (var group in groupedPermissions)
-    //     {
-    //         var request = requests.FirstOrDefault(p => p.Id == group.Key);
-    //         if (request == null) continue;
-
-    //         employerMap.TryGetValue(request.EmployerId, out var employer);
-
-    //         var workerInfos = new List<FieldResponse>();
-    //         foreach (var p in group)
-    //         {
-    //             var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
-
-
-    //             workerInfos.Add(new FieldResponse
-    //             {
-    //                 Id = p.Id.ToString(),
-    //                 Label = info?.Desc ?? "Unknown",
-    //                 Checked = false
-    //             });
-    //         }
-    //         rows.Add(new RequestRowResponse
-    //         {
-    //             Id = request.Id.ToString(),
-    //             Company = employer?.Name.ToString() ?? "Unknown",
-    //             Date = request.CreatedAt.ToString("dd.MM.yyyy hh:mm tt"),
-    //             Fields = workerInfos,
-    //             Reason = request.Reason
-    //         });
-
-    //     }
-    //     ;
-    //     return Ok(rows);
-
-    // }
-
+    [HttpGet("GetCategoryFields")]
+    public ActionResult<Dictionary<string, List<string>>> GetCategoryFields()
+    {
+        var fields = _workerInfoService.GetCategoryFields();
+        return Ok(fields);
+    }
 
 }
