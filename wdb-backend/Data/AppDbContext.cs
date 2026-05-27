@@ -34,4 +34,5 @@ public class AppDbContext : DbContext
     public DbSet<Request> Requests { get; set; }
     public DbSet<WorkerInfo> WorkerInfos { get; set; }
 
+    public DbSet<wdb_backend.Models.Notification> Notifications { get; set; }
 }

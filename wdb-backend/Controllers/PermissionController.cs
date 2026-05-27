@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using wdb_backend.Abstractions;
 using wdb_backend.Models;
+
 namespace wdb_backend.Controllers;
 
 /// <summary>
-/// API controller for managing worker-related operations.
+/// API controller for managing permission approval and rejection.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -17,12 +18,26 @@ public class PermissionController : ControllerBase
         _permissionService = permissionService;
     }
 
-    [HttpPatch("{permissionid}/approve")]
-    public async Task<ActionResult<Permission>> ApprovePermission(Guid permissionId, [FromBody] DateTime? expiryDate, CancellationToken cancellationToken)
+    [HttpPatch("{permissionId}/approve")]
+    public async Task<ActionResult<Permission>> ApprovePermission(
+        Guid permissionId,
+        [FromBody] ApprovePermissionRequest request,
+        CancellationToken cancellationToken)
     {
+        if (request.ExpiryDate == null)
+        {
+            return BadRequest(new { error = "EXPIRY_DATE_REQUIRED" });
+        }
+
         try
         {
-            var update = await _permissionService.UpdateAsync(permissionId, 1, expiryDate, cancellationToken);
+            var update = await _permissionService.UpdateAsync(
+                permissionId,
+                1,
+                request.ExpiryDate,
+                cancellationToken
+            );
+
             return Ok(update);
         }
         catch (KeyNotFoundException)
@@ -31,17 +46,24 @@ public class PermissionController : ControllerBase
         }
         catch (InvalidOperationException)
         {
-            return UnprocessableEntity(new { error = "INAVLID_STATUS_CHANGE" });
+            return UnprocessableEntity(new { error = "INVALID_STATUS_CHANGE" });
         }
-
     }
 
-    [HttpPatch("{permissionid}/reject")]
-    public async Task<ActionResult<Permission>> RejectPermission(Guid permissionId, CancellationToken cancellationToken)
+    [HttpPatch("{permissionId}/reject")]
+    public async Task<ActionResult<Permission>> RejectPermission(
+        Guid permissionId,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var update = await _permissionService.UpdateAsync(permissionId, 2, null, cancellationToken);
+            var update = await _permissionService.UpdateAsync(
+                permissionId,
+                2,
+                null,
+                cancellationToken
+            );
+
             return Ok(update);
         }
         catch (KeyNotFoundException)
@@ -50,9 +72,12 @@ public class PermissionController : ControllerBase
         }
         catch (InvalidOperationException)
         {
-            return UnprocessableEntity(new { error = "INAVLID_STATUS_CHANGE" });
+            return UnprocessableEntity(new { error = "INVALID_STATUS_CHANGE" });
         }
-
     }
+}
 
+public class ApprovePermissionRequest
+{
+    public DateTime? ExpiryDate { get; set; }
 }

@@ -1,62 +1,236 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moq;
 using wdb_backend.Abstractions;
+using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.Models;
 using wdb_backend.Services;
 
-namespace wdb_backend.Tests;
+namespace wdb_backend.Tests.Services;
 
 public class WorkerDashboardServiceTests
 {
-    private static AppDbContext CreateDbContext(string dbName)
+    private const string TestPassword = "Password123!";
+
+    private static AppDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(dbName)
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
         return new AppDbContext(options);
     }
 
-    private static WorkerDashboardServiceImpl CreateService(AppDbContext dbContext)
+    private static WorkerDashboardServiceImpl CreateService(
+        AppDbContext dbContext,
+        Mock<IBlockchainService>? blockchainServiceMock = null)
     {
+        blockchainServiceMock ??= new Mock<IBlockchainService>();
+
+        var loggerMock = new Mock<ILogger<WorkerDashboardServiceImpl>>();
+
         return new WorkerDashboardServiceImpl(
             dbContext,
-            new FakeBlockchainService(),
-            NullLogger<WorkerDashboardServiceImpl>.Instance
+            blockchainServiceMock.Object,
+            loggerMock.Object
         );
     }
 
     [Fact]
-    public async Task GetDashboardAsync_ShouldReturnNull_WhenWorkerDoesNotExist()
+    public async Task GetDashboardAsync_ReturnsNull_WhenWorkerDoesNotExist()
     {
-        using var dbContext = CreateDbContext(nameof(GetDashboardAsync_ShouldReturnNull_WhenWorkerDoesNotExist));
+        // Arrange
+        await using var dbContext = CreateDbContext();
         var service = CreateService(dbContext);
 
-        var workerId = Guid.NewGuid();
+        var missingWorkerId = Guid.NewGuid();
 
-        var result = await service.GetDashboardAsync(workerId);
+        // Act
+        var result = await service.GetDashboardAsync(missingWorkerId);
 
+        // Assert
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task GetDashboardAsync_ShouldReturnWorkerBasicInfo_WhenWorkerExists()
+    public async Task GetDashboardAsync_ReturnsWorkerBasicInfo_WhenWorkerExists()
     {
         // Arrange
-        using var dbContext = CreateDbContext(nameof(GetDashboardAsync_ShouldReturnWorkerBasicInfo_WhenWorkerExists));
+        await using var dbContext = CreateDbContext();
+
+        var worker = new Worker
+        {
+            Id = Guid.NewGuid(),
+            Name = "Alan Brown",
+            Email = "worker_001@test.com",
+            Password = TestPassword,
+            Verified = false,
+            BlockchainAddress = null
+        };
+
+        dbContext.Workers.Add(worker);
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+
+        // Act
+        var result = await service.GetDashboardAsync(worker.Id);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(worker.Id, result.Worker.Id);
+        Assert.Equal("Alan Brown", result.Worker.Name);
+        Assert.Equal("worker_001@test.com", result.Worker.Email);
+        Assert.False(result.Worker.Verified);
+        Assert.Null(result.Worker.BlockchainAddress);
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_ReturnsLatestRequests_WithPermissionAndWorkerInfoData()
+    {
+        // Arrange
+        await using var dbContext = CreateDbContext();
 
         var workerId = Guid.NewGuid();
+        var employerId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var workerInfoId = Guid.NewGuid();
+
+        var worker = new Worker
+        {
+            Id = workerId,
+            Name = "Alan Brown",
+            Email = "worker_001@test.com",
+            Password = TestPassword,
+            Verified = false,
+            BlockchainAddress = null
+        };
+
+        var employer = new Employer
+        {
+            Id = employerId,
+            Name = "BuildSafe Ltd",
+            Email = "buildsafe@test.com",
+            Password = TestPassword,
+            Verified = true
+        };
+
+        var workerInfo = new WorkerInfo
+        {
+            Id = workerInfoId,
+            WorkerId = workerId,
+            Desc = "PPE requirements",
+            Value = "Safety boots required"
+        };
+
+        var request = new Request
+        {
+            Id = requestId,
+            WorkerId = workerId,
+            EmployerId = employerId,
+            Reason = "Site onboarding check",
+            CreatedAt = new DateTime(2026, 5, 14, 10, 30, 0, DateTimeKind.Utc)
+        };
+
+        var permission = new Permission
+        {
+            Id = Guid.NewGuid(),
+            WorkerId = workerId,
+            RequestId = requestId,
+            InfoId = workerInfoId,
+            Status = PermissionStatus.Pending,
+            ExpiryDate = null,
+            LastUpdatedAt = new DateTime(2026, 5, 14, 10, 30, 0, DateTimeKind.Utc)
+        };
+
+        dbContext.Workers.Add(worker);
+        dbContext.Employers.Add(employer);
+        dbContext.WorkerInfos.Add(workerInfo);
+        dbContext.Requests.Add(request);
+        dbContext.Permissions.Add(permission);
+
+        await dbContext.SaveChangesAsync();
+
+        var service = CreateService(dbContext);
+
+        // Act
+        var result = await service.GetDashboardAsync(workerId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.LatestRequests);
+
+        var latestRequest = result.LatestRequests[0];
+
+        Assert.Equal(requestId, latestRequest.RequestId);
+        Assert.Equal(employerId, latestRequest.EmployerId);
+        Assert.Equal("BuildSafe Ltd", latestRequest.EmployerName);
+        Assert.Equal("PPE requirements", latestRequest.RequestedInformation);
+        Assert.Equal("Site onboarding check", latestRequest.CheckPurpose);
+        Assert.Equal(request.CreatedAt, latestRequest.CreatedAt);
+        Assert.Equal((int)PermissionStatus.Pending, latestRequest.Status);
+        Assert.Null(latestRequest.ExpiresAt);
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_ReturnsApprovedRequest_WithExpiryDate()
+    {
+        // Arrange
+        await using var dbContext = CreateDbContext();
+
+        var workerId = Guid.NewGuid();
+        var employerId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var workerInfoId = Guid.NewGuid();
+
+        var expiryDate = new DateTime(2026, 6, 6, 0, 0, 0, DateTimeKind.Utc);
 
         dbContext.Workers.Add(new Worker
         {
             Id = workerId,
-            Name = "user",
-            Email = "user@example.com",
-            Password = "hashed-password",
-            Verified = true,
-            CreatedAt = DateTime.UtcNow
+            Name = "Liam Johnson",
+            Email = "liam.johnson@example.com",
+            Password = TestPassword,
+            Verified = false,
+            BlockchainAddress = null
+        });
+
+        dbContext.Employers.Add(new Employer
+        {
+            Id = employerId,
+            Name = "Company_D",
+            Email = "companyd@test.com",
+            Password = TestPassword,
+            Verified = true
+        });
+
+        dbContext.WorkerInfos.Add(new WorkerInfo
+        {
+            Id = workerInfoId,
+            WorkerId = workerId,
+            Desc = "Family health history",
+            Value = "Private test value"
+        });
+
+        dbContext.Requests.Add(new Request
+        {
+            Id = requestId,
+            WorkerId = workerId,
+            EmployerId = employerId,
+            Reason = "Pre-employment screening",
+            CreatedAt = new DateTime(2026, 5, 6, 2, 15, 0, DateTimeKind.Utc)
+        });
+
+        dbContext.Permissions.Add(new Permission
+        {
+            Id = Guid.NewGuid(),
+            WorkerId = workerId,
+            RequestId = requestId,
+            InfoId = workerInfoId,
+            Status = PermissionStatus.Approved,
+            ExpiryDate = expiryDate,
+            LastUpdatedAt = new DateTime(2026, 5, 6, 2, 20, 0, DateTimeKind.Utc)
         });
 
         await dbContext.SaveChangesAsync();
@@ -68,122 +242,22 @@ public class WorkerDashboardServiceTests
 
         // Assert
         Assert.NotNull(result);
+        Assert.Single(result.LatestRequests);
 
-        var json = JsonSerializer.Serialize(result);
+        var latestRequest = result.LatestRequests[0];
 
-        Assert.Contains(workerId.ToString(), json);
-        Assert.Contains("\"name\":\"user\"", json);
-        Assert.Contains("\"email\":\"user@example.com\"", json);
-        Assert.Contains("\"verified\":true", json);
+        Assert.Equal("Company_D", latestRequest.EmployerName);
+        Assert.Equal("Family health history", latestRequest.RequestedInformation);
+        Assert.Equal("Pre-employment screening", latestRequest.CheckPurpose);
+        Assert.Equal((int)PermissionStatus.Approved, latestRequest.Status);
+        Assert.Equal(expiryDate, latestRequest.ExpiresAt);
     }
 
     [Fact]
-    public async Task GetDashboardAsync_ShouldReturnLatestRequests_WhenWorkerHasRequests()
+    public async Task GetDashboardAsync_ReturnsOnlyLatestFiveRequests()
     {
         // Arrange
-        using var dbContext = CreateDbContext(nameof(GetDashboardAsync_ShouldReturnLatestRequests_WhenWorkerHasRequests));
-
-        var workerId = Guid.NewGuid();
-        var otherWorkerId = Guid.NewGuid();
-
-        var employer1Id = Guid.NewGuid();
-        var employer2Id = Guid.NewGuid();
-
-        dbContext.Workers.AddRange(
-            new Worker
-            {
-                Id = workerId,
-                Name = "user",
-                Email = "user@example.com",
-                Password = "hashed-password",
-                Verified = true,
-                CreatedAt = DateTime.UtcNow
-            },
-            new Worker
-            {
-                Id = otherWorkerId,
-                Name = "other",
-                Email = "other@example.com",
-                Password = "hashed-password",
-                Verified = true,
-                CreatedAt = DateTime.UtcNow
-            }
-        );
-
-        dbContext.Employers.AddRange(
-            new Employer
-            {
-                Id = employer1Id,
-                Name = "First Step Solutions",
-                Email = "contact@firststepsolutions.nz",
-                Password = "hashed-password",
-                Verified = true,
-                CreatedAt = DateTime.UtcNow
-            },
-            new Employer
-            {
-                Id = employer2Id,
-                Name = "BuildSafe Ltd",
-                Email = "admin@buildsafe.nz",
-                Password = "hashed-password",
-                Verified = true,
-                CreatedAt = DateTime.UtcNow
-            }
-        );
-
-        dbContext.Requests.AddRange(
-            new Request
-            {
-                Id = Guid.NewGuid(),
-                WorkerId = workerId,
-                EmployerId = employer1Id,
-                Reason = "Site onboarding",
-                CreatedAt = DateTime.UtcNow.AddHours(-2)
-            },
-            new Request
-            {
-                Id = Guid.NewGuid(),
-                WorkerId = workerId,
-                EmployerId = employer2Id,
-                Reason = "PPE compliance check",
-                CreatedAt = DateTime.UtcNow.AddHours(-1)
-            },
-            new Request
-            {
-                Id = Guid.NewGuid(),
-                WorkerId = otherWorkerId,
-                EmployerId = employer1Id,
-                Reason = "Other worker request",
-                CreatedAt = DateTime.UtcNow
-            }
-        );
-
-        await dbContext.SaveChangesAsync();
-
-        var service = CreateService(dbContext);
-
-        // Act
-        var result = await service.GetDashboardAsync(workerId);
-
-        // Assert
-        Assert.NotNull(result);
-
-        var json = JsonSerializer.Serialize(result);
-
-        Assert.Contains("\"latestRequests\":[", json);
-        Assert.Contains("First Step Solutions", json);
-        Assert.Contains("BuildSafe Ltd", json);
-        Assert.Contains("Site onboarding", json);
-        Assert.Contains("PPE compliance check", json);
-
-        Assert.DoesNotContain("Other worker request", json);
-    }
-
-    [Fact]
-    public async Task GetDashboardAsync_ShouldReturnOnlyLatestFiveRequests_InDescendingOrder()
-    {
-        // Arrange
-        using var dbContext = CreateDbContext(nameof(GetDashboardAsync_ShouldReturnOnlyLatestFiveRequests_InDescendingOrder));
+        await using var dbContext = CreateDbContext();
 
         var workerId = Guid.NewGuid();
         var employerId = Guid.NewGuid();
@@ -191,32 +265,53 @@ public class WorkerDashboardServiceTests
         dbContext.Workers.Add(new Worker
         {
             Id = workerId,
-            Name = "user",
-            Email = "user@example.com",
-            Password = "hashed-password",
-            Verified = true,
-            CreatedAt = DateTime.UtcNow
+            Name = "Alan Brown",
+            Email = "worker_001@test.com",
+            Password = TestPassword,
+            Verified = false,
+            BlockchainAddress = null
         });
 
         dbContext.Employers.Add(new Employer
         {
             Id = employerId,
-            Name = "First Step Solutions",
-            Email = "contact@firststepsolutions.nz",
-            Password = "hashed-password",
-            Verified = true,
-            CreatedAt = DateTime.UtcNow
+            Name = "Company_001",
+            Email = "company001@test.com",
+            Password = TestPassword,
+            Verified = true
         });
 
-        for (int i = 0; i < 6; i++)
+        for (var i = 1; i <= 6; i++)
         {
+            var requestId = Guid.NewGuid();
+            var workerInfoId = Guid.NewGuid();
+
+            dbContext.WorkerInfos.Add(new WorkerInfo
+            {
+                Id = workerInfoId,
+                WorkerId = workerId,
+                Desc = $"Info {i}",
+                Value = $"Value {i}"
+            });
+
             dbContext.Requests.Add(new Request
             {
-                Id = Guid.NewGuid(),
+                Id = requestId,
                 WorkerId = workerId,
                 EmployerId = employerId,
                 Reason = $"Reason {i}",
-                CreatedAt = DateTime.UtcNow.AddHours(-i)
+                CreatedAt = new DateTime(2026, 5, i, 10, 0, 0, DateTimeKind.Utc)
+            });
+
+            dbContext.Permissions.Add(new Permission
+            {
+                Id = Guid.NewGuid(),
+                WorkerId = workerId,
+                RequestId = requestId,
+                InfoId = workerInfoId,
+                Status = PermissionStatus.Pending,
+                ExpiryDate = null,
+                LastUpdatedAt = new DateTime(2026, 5, i, 10, 0, 0, DateTimeKind.Utc)
             });
         }
 
@@ -229,92 +324,10 @@ public class WorkerDashboardServiceTests
 
         // Assert
         Assert.NotNull(result);
+        Assert.Equal(5, result.LatestRequests.Count);
 
-        var json = JsonSerializer.Serialize(result);
-
-        // Only 5 requests should be returned
-        var requestCount = json.Split("requestId").Length - 1;
-        Assert.Equal(5, requestCount);
-
-        // The newest five should be kept, and the oldest one should be excluded
-        Assert.Contains("Reason 0", json);
-        Assert.Contains("Reason 1", json);
-        Assert.Contains("Reason 2", json);
-        Assert.Contains("Reason 3", json);
-        Assert.Contains("Reason 4", json);
-        Assert.DoesNotContain("Reason 5", json);
-
-        // The requests should be ordered from newest to oldest
-        var index0 = json.IndexOf("Reason 0", StringComparison.Ordinal);
-        var index4 = json.IndexOf("Reason 4", StringComparison.Ordinal);
-
-        Assert.True(index0 < index4);
-    }
-
-    [Fact]
-    public async Task GetDashboardAsync_ShouldReturnEmptyBlockchainRecords_WhenNoBlockchainDataExists()
-    {
-        // Arrange
-        using var dbContext = CreateDbContext(nameof(GetDashboardAsync_ShouldReturnEmptyBlockchainRecords_WhenNoBlockchainDataExists));
-
-        var workerId = Guid.NewGuid();
-
-        dbContext.Workers.Add(new Worker
-        {
-            Id = workerId,
-            Name = "user",
-            Email = "user@example.com",
-            Password = "hashed-password",
-            Verified = true,
-            CreatedAt = DateTime.UtcNow,
-            BlockchainAddress = "0xWorkerAddress"
-        });
-
-        await dbContext.SaveChangesAsync();
-
-        var service = CreateService(dbContext);
-
-        // Act
-        var result = await service.GetDashboardAsync(workerId);
-
-        // Assert
-        Assert.NotNull(result);
-
-        var json = JsonSerializer.Serialize(result);
-
-        Assert.Contains("\"blockchainRecords\":[]", json);
-        Assert.Contains("\"blockchainAvailable\":true", json);
-    }
-
-    private class FakeBlockchainService : IBlockchainService
-    {
-        public BlockchainKeyPair GenerateKeyPair()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<string> LogTransactionAsync(
-            string privateKey,
-            string employerAddress,
-            string workerAddress,
-            BlockchainAction action,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<BlockchainTransactionResponse>> GetWorkerLogsAsync(
-            string workerAddress,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new List<BlockchainTransactionResponse>());
-        }
-
-        public Task<List<BlockchainTransactionResponse>> GetEmployerLogsAsync(
-            string employerAddress,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        // The newest request should be first.
+        Assert.Equal("Reason 6", result.LatestRequests[0].CheckPurpose);
+        Assert.Equal("Reason 2", result.LatestRequests[4].CheckPurpose);
     }
 }

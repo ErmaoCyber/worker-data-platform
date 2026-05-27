@@ -65,7 +65,7 @@ public class AuthService<T> where T : class, IUser, new()
 
 
     // handle login logic
-    public async Task<(bool Success, string Message, AuthResult result)> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<(bool Success, string Message, AuthResult? result)> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         // get the login info from LoginRequest
         string email = request.Email.Trim().ToLowerInvariant();
