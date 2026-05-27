@@ -170,4 +170,11 @@ public class WorkerController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet("GetCategoryFields")]
+    public ActionResult<Dictionary<string, List<string>>> GetCategoryFields()
+    {
+        var fields = _workerInfoService.GetCategoryFields();
+        return Ok(fields);
+    }
 }

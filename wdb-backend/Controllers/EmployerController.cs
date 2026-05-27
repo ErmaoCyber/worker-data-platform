@@ -76,6 +76,8 @@ public class EmployerController : ControllerBase
             {
                 Id = w.Id,
                 Desc = w.Desc,
+                Status = "",
+                Category = w.Category?.ToString() ?? "Unknown"
             }).ToList();
             return Ok(result);
         }
@@ -113,6 +115,7 @@ public class EmployerController : ControllerBase
             {
                 Id = w.Id,
                 Desc = w.Desc,
+                Category = w.Category?.ToString() ?? "Unknown",
                 Status = w.Permissions.FirstOrDefault()?.Status.ToString() ?? "Unknown"
             }).ToList();
             return Ok(result);

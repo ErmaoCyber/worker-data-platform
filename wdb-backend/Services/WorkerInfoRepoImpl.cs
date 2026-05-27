@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
 using wdb_backend.Data;
+using wdb_backend.Enums;
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
@@ -125,4 +126,25 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         return requestedInfos;
     }
 
+    public Dictionary<string, List<string>> GetCategoryFields()
+    {
+        return new Dictionary<string, List<string>>()
+        {
+            [WorkerInfoCategory.PersonaInformation.ToString()] = new List<string>
+        {
+            "firstname", "lastname", "phonenumber", "email",
+            "country", "city", "street", "postcode", "gender"
+        },
+            [WorkerInfoCategory.MedicalInformation.ToString()] = new List<string>
+        {
+            "past illness", "surgeries", "clinic records"
+        },
+            [WorkerInfoCategory.CareerInformation.ToString()] = new List<string>
+        {
+            "work experience", "work role", "work achievements",
+            "work location", "duration"
+        },
+        };
+
+    }
 }

@@ -8,8 +8,26 @@ interface RequestModalProps {
   onClose: () => void;
 }
 
-export default function RequestModal({ onClose }: RequestModalProps) {
+// Predefined categories with display info
+const CATEGORIES = [
+  {
+    key: 'PersonaInformation',
+    label: 'Basic personal details',
+    desc: 'Name, date of birth, gender, contact details, address',
+  },
+  {
+    key: 'MedicalInformation',
+    label: 'Medical history',
+    desc: 'Past illnesses, surgeries, hospital visits',
+  },
+  {
+    key: 'CareerInformation',
+    label: 'Career information',
+    desc: 'Work experience, work role, achievements, location, duration',
+  },
+];
 
+export default function RequestModal({ onClose }: RequestModalProps) {
   const router = useRouter();
   const { token, role, isAuthReady } = useAuth();
 
@@ -18,6 +36,7 @@ export default function RequestModal({ onClose }: RequestModalProps) {
     desc: string;
     value: string;
     status: string;
+    category: string;
   };
 
   type Worker = {
@@ -40,6 +59,7 @@ export default function RequestModal({ onClose }: RequestModalProps) {
   // Flexible request state
   const [newFlexRequestDesc, setNewFlexRequestDesc] = useState('');
   const [newDescCategory, setNewDescCategory] = useState('');
+  const [showFlexRequest, setShowFlexRequest] = useState(false);
 
   function ensureEmployerAuth() {
     if (!isAuthReady) {
@@ -95,10 +115,10 @@ export default function RequestModal({ onClose }: RequestModalProps) {
     }
   }
 
-  function toggle(id: string) {
+  function toggleCategory(categoryKey: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(categoryKey) ? next.delete(categoryKey) : next.add(categoryKey);
       return next;
     });
   }
@@ -107,7 +127,7 @@ export default function RequestModal({ onClose }: RequestModalProps) {
     if (!ensureEmployerAuth()) return;
 
     if (isSelected.size === 0 && !(newFlexRequestDesc && newDescCategory)) {
-      alert('Please select at least one item or fill in a flexible request');
+      alert('Please select at least one category or fill in a flexible request');
       return;
     }
     if (!reason) {
@@ -119,6 +139,11 @@ export default function RequestModal({ onClose }: RequestModalProps) {
 
     try {
       if (isSelected.size > 0) {
+        // Get all workerInfo IDs that belong to selected categories
+        const selectedIds = workerInfos
+          .filter((w) => isSelected.has(w.category))
+          .map((w) => w.id);
+
         await FetchApi('/api/Employer/AccessRequests', {
           method: 'POST',
           headers: {
@@ -127,7 +152,7 @@ export default function RequestModal({ onClose }: RequestModalProps) {
           },
           body: JSON.stringify({
             Email: worker?.email,
-            InfoDesc: Array.from(isSelected),
+            InfoDesc: selectedIds,
             Reason: reason,
           }),
         });
@@ -169,139 +194,150 @@ export default function RequestModal({ onClose }: RequestModalProps) {
   }
 
   return (
-    <div className="relative max-w-lg mx-auto mt-10 p-6 border border-gray-600 rounded-xl shadow-md">
-      <button
-        className="absolute top-5 right-8 text-gray-600 text-xl"
-        onClick={onClose}
-      >
-        x
-      </button>
+    <div className="relative w-full max-w-2xl mx-auto p-8 bg-white rounded-2xl shadow-lg">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-slate-900">Create new request</h2>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">✕</button>
+      </div>
 
-      <div className="flex items-center justify-center flex-col gap-2">
-        <p className="text-left w-full text-gray-600">Create new request</p>
-
-        {!findWorker && (
-          <div className="w-full gap-2">
-            <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 w-full">
-              <label className="absolute top-2 left-4 text-xs text-gray-400">Email</label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full outline-none text-gray-800"
-                placeholder="Workeremail@gmail.com"
-              />
-            </div>
-            <button
-              onClick={() => handleSearch(email)}
-              disabled={isLoading}
-              className="bg-[#49454F] px-6 py-2 rounded-lg text-white w-full my-2 disabled:opacity-70"
-            >
-              {isLoading ? 'Searching' : 'Search'}
-            </button>
-            {errorMsg && <p className="text-[#49454F] text-center">{errorMsg}</p>}
+      {/* Step 1: Search */}
+      {!findWorker && (
+        <div className="flex flex-col gap-4">
+          <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 w-full">
+            <label className="absolute top-2 left-4 text-xs text-gray-400">Worker Email</label>
+            <input
+              type="text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full outline-none text-gray-800"
+              placeholder="worker@example.com"
+            />
           </div>
-        )}
+          <button
+            onClick={() => handleSearch(email)}
+            disabled={isLoading}
+            className="bg-slate-800 px-6 py-3 rounded-xl text-white w-full font-medium disabled:opacity-70"
+          >
+            {isLoading ? 'Searching...' : 'Search'}
+          </button>
+          {errorMsg && <p className="text-red-500 text-center">{errorMsg}</p>}
+        </div>
+      )}
 
-        {findWorker && (
-          <div className="w-full flex flex-col">
-            <div className="text-gray-600 bg-gray-100 w-full rounded-lg my-4 p-4">
-              <p>Email: {worker?.email}</p>
-              <p>Name: {worker?.name}</p>
-            </div>
+      {/* Step 2: Select categories */}
+      {findWorker && (
+        <div className="flex flex-col gap-4">
+          {/* Worker info */}
+          <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-600">
+            <p>Email: <span className="text-blue-600">{worker?.email}</span></p>
+            <p>Name: {worker?.name}</p>
+          </div>
 
-            {workerInfos.length === 0 ? (
-              <>
-                <p className="mb-4">This worker has no info items</p>
-                <button
-                  className="px-6 py-2 rounded-lg bg-[#49454F] text-white w-full"
-                  onClick={() => setFindWorker(false)}
-                >
-                  Back
-                </button>
-              </>
+          {/* Already requested */}
+          <div>
+            <p className="text-sm text-slate-600 mb-2">The info you have already requested:</p>
+            {workerInfosHasRequested.length === 0 ? (
+              <p className="text-sm text-slate-400">No previous requests for this worker.</p>
             ) : (
-              <>
-                {workerInfosHasRequested.length > 0 && (
-                  <>
-                    <p className="text-gray-600">The info you have requested:</p>
-                    <div className="flex flex-col gap-2 mb-4">
-                      {workerInfosHasRequested.map((w) => (
-                        <div key={w.id} className="flex items-center justify-center border rounded-lg border-gray-300 w-full">
-                          <p className="flex-1 text-black">{w.desc}: {w.status}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                <p className="text-gray-600">Please choose the info you want to request</p>
-                <div className="flex flex-col gap-2">
-                  {workerInfos.map((w) => (
-                    <div key={w.id} className="flex items-center justify-center border rounded-lg border-gray-300 w-full">
-                      <input
-                        type="checkbox"
-                        className="border rounded-lg gap-2 m-2 accent-[#49454F]"
-                        checked={isSelected.has(w.id)}
-                        onChange={() => toggle(w.id)}
-                      />
-                      <p className="flex-1 text-black">{w.desc}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Flexible request section */}
-                <div className="w-full flex items-center justify-center my-4">
-                  <p className="text-gray-600">Or add new flexible request (Optional)</p>
-                  <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 ml-4 flex-1">
-                    <label className="absolute top-2 left-4 text-xs text-gray-400">Category</label>
-                    <select
-                      className="w-full outline-none text-gray-800"
-                      value={newDescCategory}
-                      onChange={(e) => setNewDescCategory(e.target.value)}
-                    >
-                      <option value="">Select category</option>
-                      <option value="PersonaInformation">Personal Information</option>
-                      <option value="MedicalInformation">Medical Information</option>
-                      <option value="CareerInformation">Career Information</option>
-                      <option value="OtherInformation">Other Information</option>
-                    </select>
+              <div className="flex flex-col gap-2">
+                {workerInfosHasRequested.map((w) => (
+                  <div key={w.id} className="border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-700">
+                    {w.desc}: <span className="font-medium">{w.status}</span>
                   </div>
-                  <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 ml-4 flex-1">
-                    <label className="absolute top-2 left-4 text-xs text-gray-400">Description</label>
-                    <input
-                      type="text"
-                      className="w-full outline-none text-gray-800"
-                      value={newFlexRequestDesc}
-                      onChange={(e) => setNewFlexRequestDesc(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Reason and submit */}
-                <div className="flex flex-col items-center gap-4 rounded-lg my-4 w-full">
-                  <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 w-full">
-                    <label className="absolute top-2 left-4 text-xs text-gray-400">Reason</label>
-                    <input
-                      type="text"
-                      className="w-full outline-none text-gray-800"
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    onClick={handleRequest}
-                    className="px-6 py-2 rounded-lg bg-[#49454F] text-white w-full"
-                  >
-                    Submit
-                  </button>
-                  <p className="flex items-center">{sentMsg}</p>
-                </div>
-              </>
+                ))}
+              </div>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Category checkboxes */}
+          <div>
+            <p className="font-semibold text-slate-800 mb-3">Please choose the info you want to request:</p>
+            <div className="flex flex-col gap-3">
+              {CATEGORIES.map((cat) => (
+                <label
+                  key={cat.key}
+                  className={`flex items-start gap-4 border rounded-xl px-4 py-4 cursor-pointer transition-colors ${isSelected.has(cat.key)
+                    ? 'border-slate-800 bg-slate-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-slate-800"
+                    checked={isSelected.has(cat.key)}
+                    onChange={() => toggleCategory(cat.key)}
+                  />
+                  <div>
+                    <p className="font-semibold text-slate-800">{cat.label}</p>
+                    <p className="text-sm text-slate-400">{cat.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Flexible request */}
+          <div>
+            <button
+              onClick={() => setShowFlexRequest(!showFlexRequest)}
+              className="text-sm text-slate-500 underline"
+            >
+              {showFlexRequest ? 'Hide' : '+ Add flexible request (Optional)'}
+            </button>
+
+            {showFlexRequest && (
+              <div className="flex gap-3 mt-3">
+                <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 flex-1">
+                  <label className="absolute top-2 left-4 text-xs text-gray-400">Category</label>
+                  <select
+                    className="w-full outline-none text-gray-800"
+                    value={newDescCategory}
+                    onChange={(e) => setNewDescCategory(e.target.value)}
+                  >
+                    <option value="">Select category</option>
+                    <option value="PersonaInformation">Personal Information</option>
+                    <option value="MedicalInformation">Medical Information</option>
+                    <option value="CareerInformation">Career Information</option>
+                    <option value="OtherInformation">Other Information</option>
+                  </select>
+                </div>
+                <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 flex-1">
+                  <label className="absolute top-2 left-4 text-xs text-gray-400">Description</label>
+                  <input
+                    type="text"
+                    className="w-full outline-none text-gray-800"
+                    value={newFlexRequestDesc}
+                    onChange={(e) => setNewFlexRequestDesc(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Reason */}
+          <div className="relative border border-gray-300 rounded-xl px-4 pt-5 pb-2 w-full">
+            <label className="absolute top-2 left-4 text-xs text-gray-400">Reason</label>
+            <input
+              type="text"
+              className="w-full outline-none text-gray-800"
+              placeholder="Why do you need this information?"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            onClick={handleRequest}
+            className="bg-slate-800 px-6 py-3 rounded-xl text-white w-full font-medium"
+          >
+            Submit
+          </button>
+
+          {sentMsg && <p className="text-center text-sm text-slate-600">{sentMsg}</p>}
+        </div>
+      )}
     </div>
   );
 }

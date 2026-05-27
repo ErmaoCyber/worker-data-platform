@@ -1,4 +1,5 @@
 using wdb_backend.Abstractions;
+using wdb_backend.Enums;
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
@@ -103,6 +104,28 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
     {
         var workinfos = await _workerInfoRepo.GetRequestedWorkerInfos(workerId, employerId, default);
         return workinfos;
+    }
+
+    public Dictionary<string, List<string>> GetCategoryFields()
+    {
+        return new Dictionary<string, List<string>>()
+        {
+            [WorkerInfoCategory.PersonaInformation.ToString()] = new List<string>
+        {
+            "firstname", "lastname", "phonenumber", "email",
+            "country", "city", "street", "postcode", "gender"
+        },
+            [WorkerInfoCategory.MedicalInformation.ToString()] = new List<string>
+        {
+            "past illness", "surgeries", "clinic records"
+        },
+            [WorkerInfoCategory.CareerInformation.ToString()] = new List<string>
+        {
+            "work experience", "work role", "work achievements",
+            "work location", "duration"
+        },
+        };
+
     }
 
 }
