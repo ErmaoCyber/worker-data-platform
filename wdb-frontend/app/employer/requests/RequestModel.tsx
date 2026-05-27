@@ -61,6 +61,15 @@ export default function RequestModal({ onClose }: RequestModalProps) {
   const [newDescCategory, setNewDescCategory] = useState('');
   const [showFlexRequest, setShowFlexRequest] = useState(false);
 
+
+
+  const categoryLabels: Record<string, string> = {
+    PersonaInformation: 'Basic personal details',
+    MedicalInformation: 'Medical history',
+    CareerInformation: 'Career information',
+    OtherInformation: 'Other information',
+  };
+
   function ensureEmployerAuth() {
     if (!isAuthReady) {
       setErrorMsg('Loading authentication. Please try again in a moment.');
@@ -240,13 +249,14 @@ export default function RequestModal({ onClose }: RequestModalProps) {
             {workerInfosHasRequested.length === 0 ? (
               <p className="text-sm text-slate-400">No previous requests for this worker.</p>
             ) : (
-              <div className="flex flex-col gap-2">
-                {workerInfosHasRequested.map((w) => (
-                  <div key={w.id} className="border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-700">
-                    {w.desc}: <span className="font-medium">{w.status}</span>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-slate-500">
+                You have already requested:{' '}
+                <span className="font-medium text-slate-700">
+                  {[...new Set(workerInfosHasRequested.map((w) => w.category || w.desc))]
+                    .map((cat) => categoryLabels[cat] || cat)
+                    .join(', ')}
+                </span>
+              </p>
             )}
           </div>
 

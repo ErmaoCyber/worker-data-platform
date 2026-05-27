@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 
 interface AddInfoProps {
     company: string;
-    unlistedInfoDesc: string[];
+    unlistedInfoDesc: { desc: string; category: string }[];
     onNext: () => void;
     onCancel: () => void;
 }
@@ -19,30 +19,21 @@ interface WorkerInfoItem {
     value: string
 }
 
-export default function AddPersonalInfoModal({ company, unlistedInfoDesc, onNext, onCancel}: AddInfoProps) {
+export default function AddPersonalInfoModal({ company, unlistedInfoDesc, onNext, onCancel }: AddInfoProps) {
     // const [token, setToken] = useState('')
     // centralised auth state, so the modal does not duplicate the localStorage read logic and stays consistent with the rest of the app
     const { token } = useAuth()
     // walk through each unlisted item one at a time so multi-item requests can all be filled in
     const [currentIndex, setCurrentIndex] = useState(0)
     const [value, setValue] = useState('')
-    const [category, setCategory] = useState('Personal')
+    const [category, setCategory] = useState('PersonaInformation')
     const [error, setError] = useState('')
     // desc is derived from the current index, not its own state, so it always tracks the active item
-    const desc = unlistedInfoDesc[currentIndex] ?? ''
-    // const [allDate, setAllData] = useState<WorkerInfoItem[]>([])
-
-    // useEffect(() => {
-    //         const storedToken = localStorage.getItem('accessToken');
-    //         if (storedToken != null) {
-    //             setToken(storedToken);
-    //         }
-    //     }, []);
-
-    // clear the form between items so the user always starts fresh after advancing
+    const desc = unlistedInfoDesc[currentIndex]?.desc ?? ''
+    const categoryValue = unlistedInfoDesc[currentIndex]?.category ?? 'Personal'
     useEffect(() => {
         setValue('')
-        setCategory('Personal')
+        setCategory(categoryValue)
         setError('')
     }, [currentIndex]);
 
@@ -50,7 +41,7 @@ export default function AddPersonalInfoModal({ company, unlistedInfoDesc, onNext
         // useAuth().token can be null before login is restored; skip the doomed request
         if (!token) return
         try {
-            await addWorkerProfile(token, desc, value, category)
+            await addWorkerProfile(token, desc, value, categoryValue)
         } catch (error) {
             console.error('Failed to add worker profile:', error)
         }
@@ -67,7 +58,7 @@ export default function AddPersonalInfoModal({ company, unlistedInfoDesc, onNext
                 <ul className="mb-6 flex flex-col gap-2">
                     {unlistedInfoDesc.map((field, idx) => (
                         <li
-                            key={field}
+                            key={field.desc}
                             className={
                                 idx === currentIndex
                                     ? "text-sm text-gray-900 border border-red-400 bg-red-50 rounded-md px-3 py-1.5"
@@ -76,7 +67,7 @@ export default function AddPersonalInfoModal({ company, unlistedInfoDesc, onNext
                                         : "text-sm text-gray-700 border border-gray-200 rounded-md px-3 py-1.5"
                             }
                         >
-                            {field}
+                            {field.desc}
                         </li>
                     ))}
                 </ul>
@@ -86,31 +77,27 @@ export default function AddPersonalInfoModal({ company, unlistedInfoDesc, onNext
                 </h2>
                 <label className="block text-sm text-gray-400 mb-0.5">Description</label>
                 <input
-                value={desc}
-                readOnly
-                className="w-full py-[11px] px-[14px] border border-[#D9D9D9] rounded-lg text-[0.9rem] text-gray-500 bg-gray-50 outline-none mb-3 cursor-not-allowed"
+                    value={desc}
+                    readOnly
+                    className="w-full py-[11px] px-[14px] border border-[#D9D9D9] rounded-lg text-[0.9rem] text-gray-500 bg-gray-50 outline-none mb-3 cursor-not-allowed"
                 />
                 <label className="block text-sm text-gray-400 mb-0.5">Value</label>
                 <input
-                placeholder="e.g. Covid-19 Vaccine 2021"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                required
-                className="w-full py-[11px] px-[14px] border border-[#D9D9D9] rounded-lg text-[0.9rem] text-black bg-white outline-none mb-3"
+                    placeholder="e.g. Covid-19 Vaccine 2021"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    required
+                    className="w-full py-[11px] px-[14px] border border-[#D9D9D9] rounded-lg text-[0.9rem] text-black bg-white outline-none mb-3"
                 />
                 <label className="block text-sm text-gray-400 mb-0.5">Category</label>
-                <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full py-[11px] px-[14px] border border-[#D9D9D9] rounded-lg text-[0.9rem] text-black bg-white outline-none mb-4">
-                    <option>Personal</option>
-                    <option>Medical</option>
-                    <option>Career</option>
-                    <option>Other</option>
-                </select>
+                <input
+                    value={categoryValue}
+                    readOnly
+                    className="w-full py-[11px] px-[14px] border border-[#D9D9D9] rounded-lg text-[0.9rem] text-gray-500 bg-gray-50 outline-none mb-4 cursor-not-allowed"
+                />
 
                 {error && <p className="flex text-sm text-red-500 items-center justify-center">{error}</p>}
-        
+
                 <div className="flex gap-3 justify-end mt-6">
                     <button
                         onClick={onCancel}

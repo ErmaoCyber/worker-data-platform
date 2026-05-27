@@ -68,11 +68,7 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         {
             // if the record exist, then updat the vaule and save the change in db.
             existing.Value = workerInfo.Value;
-            // only overwrite category when caller actually provided one, so the profile-edit flow (which omits it) does not wipe it
-            if (workerInfo.Category != null)
-            {
-                existing.Category = workerInfo.Category;
-            }
+            existing.Category = workerInfo.Category;
             existing.UpdatedAt = DateTime.UtcNow; // update the updated time to current time.
             await _context.SaveChangesAsync(cancellationToken);
             return existing;
@@ -107,17 +103,7 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         return availableInfos;
     }
 
-    // public async Task<List<WorkerInfo>> GetRequestedWorkerInfos1(Guid workerId, Guid employerId,CancellationToken cancellationToken = default)
-    // {
-    //     var workerInfos = await _context.WorkerInfos
-    //         .Where(w => w.WorkerId == workerId &&
-    //                     w.Permissions.Any(p => p.Request.EmployerId == employerId &&
-    //                                            p.Status == PermissionStatus.Pending &&
-    //                                            p.Status == PermissionStatus.Approved))
-    //         .ToListAsync(cancellationToken);
-    //
-    //     return workerInfos; // transform list to hashset.
-    // }
+
     public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
     {
         var requestedInfos = await _context.WorkerInfos
@@ -131,25 +117,4 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         return requestedInfos;
     }
 
-    public Dictionary<string, List<string>> GetCategoryFields()
-    {
-        return new Dictionary<string, List<string>>()
-        {
-            [WorkerInfoCategory.PersonaInformation.ToString()] = new List<string>
-        {
-            "firstname", "lastname", "phonenumber", "email",
-            "country", "city", "street", "postcode", "gender"
-        },
-            [WorkerInfoCategory.MedicalInformation.ToString()] = new List<string>
-        {
-            "past illness", "surgeries", "clinic records"
-        },
-            [WorkerInfoCategory.CareerInformation.ToString()] = new List<string>
-        {
-            "work experience", "work role", "work achievements",
-            "work location", "duration"
-        },
-        };
-
-    }
 }

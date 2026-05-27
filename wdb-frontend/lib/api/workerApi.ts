@@ -45,14 +45,14 @@ export async function addWorkerProfile(token: string, desc: string, value: strin
 
 
 // when user had edit this method can update or cover the newest dat to http then pass to endfront
-export async function updateWorkerProfile(token: string, desc: string, value: string) {
+export async function updateWorkerProfile(token: string, desc: string, value: string, category: string) {
     const response = await fetch(BASE_URL, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ Desc: desc, Value: value }),
+        body: JSON.stringify({ Desc: desc, Value: value, Category: category }),
     })
 
     if (!response.ok) {

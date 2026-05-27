@@ -47,9 +47,6 @@ public class WorkerInfo
     [Column("value")]
     public string? Value { get; set; }
 
-    [Column("category")]
-    public string? Category { get; set; }
-
     public ICollection<Permission> Permissions { get; set; } = new List<Permission>();
 
     [Column("category", TypeName = "varchar(50)")]

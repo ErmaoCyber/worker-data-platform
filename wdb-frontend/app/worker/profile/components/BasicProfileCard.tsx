@@ -4,17 +4,13 @@ import TextInput from "@/component/ui/TextInput"
 import Dropdown from "@/component/ui/Dropdown"
 import { DisplayField } from '@/component/ui/DisplayField'
 
-// define what type of data should be inject
 interface BasicProfileCardProps {
     data: WorkerInfoItem[]
-    onSave: (desc: string, value: string) => Promise<void>
+    onSave: (desc: string, value: string, category: string) => Promise<void>
 }
 
-// main method : define the variable of this component and read danamic variable's value then save final value
-// return{} define the ui logic 
 export default function BasicProfileCard({ data, onSave }: BasicProfileCardProps) {
 
-    // define the variable in order to allow avriavle could be danamic
     const [isEditing, setIsEdit] = useState(false)
     const [editFirstName, setEditFirstName] = useState('')
     const [editLastName, setEditLastName] = useState('')
@@ -33,8 +29,6 @@ export default function BasicProfileCard({ data, onSave }: BasicProfileCardProps
         { label: 'Prefer not to say', value: 'prefer_not_to_say' },
     ]
 
-
-    // read the danamic variable's value
     useEffect(() => {
         setEditFirstName(data.find(item => item.desc == 'firstname')?.value ?? '')
         setEditLastName(data.find(item => item.desc == 'lastname')?.value ?? '')
@@ -46,122 +40,103 @@ export default function BasicProfileCard({ data, onSave }: BasicProfileCardProps
         setEditPostcode(data.find(item => item.desc == 'postcode')?.value ?? '')
         setEditGendar(data.find(item => item.desc == 'gender')?.value ?? '')
     }, [data])
-    //  save final value
+
     const handleDone = async () => {
+        if (!editFirstName.trim()) { alert('First name cannot be empty'); return }
+        if (!editLastName.trim()) { alert('Last name cannot be empty'); return }
+        if (!editEmail.trim()) { alert('Email cannot be empty'); return }
+        if (!editPhone.trim()) { alert('Phone number cannot be empty'); return }
+        if (!editPostcode.trim()) { alert('Post code cannot be empty'); return }
+        if (!editGendar.trim()) { alert('Gender cannot be empty'); return }
+        if (!editCountry.trim()) { alert('Country cannot be empty'); return }
+        if (!editCity.trim()) { alert('City cannot be empty'); return }
+        if (!editStreet.trim()) { alert('Street cannot be empty'); return }
 
-        if (!editFirstName.trim()) {
-            alert('First name cannot be empty')
-            return
-        }
-        if (!editLastName.trim()) {
-            alert('Last name cannot be empty')
-            return
-        }
-        if (!editEmail.trim()) {
-            alert('Email cannot be empty')
-            return
-        }
-        if (!editPhone.trim()) {
-            alert('Phone number cannot be empty')
-            return
-        }
-        if (!editPostcode.trim()) {
-            alert('Post code cannot be empty')
-            return
-        }
-        if (!editPhone.trim()) {
-            alert('Phone number cannot be empty')
-            return
-        }
-        if (!editGendar.trim()) {
-            alert('Gender cannot be empty')
-            return
-        }
-        if (!editCountry.trim()) {
-            alert('Country cannot be empty')
-            return
-        }
-        if (!editCity.trim()) {
-            alert('City cannot be empty')
-            return
-        }
-        if (!editStreet.trim()) {
-            alert('Street cannot be empty')
-            return
-        }
-
-        await onSave('firstname', editFirstName)
-        await onSave('lastname', editLastName)
-        await onSave('phonenumber', editPhone)
-        await onSave('email', editEmail)
-        await onSave('country', editCountry)
-        await onSave('city', editCity)
-        await onSave('street', editStreet)
-        await onSave('postcode', editPostcode)
-        await onSave('gender', editGendar)
+        await onSave('firstname', editFirstName, 'PersonaInformation')
+        await onSave('lastname', editLastName, 'PersonaInformation')
+        await onSave('phonenumber', editPhone, 'PersonaInformation')
+        await onSave('email', editEmail, 'PersonaInformation')
+        await onSave('country', editCountry, 'PersonaInformation')
+        await onSave('city', editCity, 'PersonaInformation')
+        await onSave('street', editStreet, 'PersonaInformation')
+        await onSave('postcode', editPostcode, 'PersonaInformation')
+        await onSave('gender', editGendar, 'PersonaInformation')
 
         setIsEdit(false)
     }
-    // define th ui logic
+
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex justify-between items-start mb-6">
-                <h2 className="text-lg font-semibold text-gray-800"> Basic Information</h2>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-slate-900">Basic Information</h2>
                 <button
                     onClick={isEditing ? handleDone : () => setIsEdit(true)}
-                    className="flex item-center gap text-sm text-blue-600 hover:text-blue-800 ">
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                >
                     {isEditing ? 'Done' : 'Edit'}
                 </button>
             </div>
+
             {isEditing ? (
                 <div className="flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <TextInput label={"First Name"} value={editFirstName}
-                            onChange={(v) => setEditFirstName(v)}
-                        />
-
-                        <TextInput label={"Last Name"} value={editLastName}
-                            onChange={(v) => setEditLastName(v)}
-                        />
-
-                        <TextInput label={"Phone"} value={editPhone}
-                            onChange={(v) => setEditPhone(v)}
-                        />
-                        <TextInput label={"Email"} value={editEmail}
-                            onChange={(v) => setEditEmail(v)}
-                        />
+                        <TextInput label="First Name" value={editFirstName} onChange={(v) => setEditFirstName(v)} />
+                        <TextInput label="Last Name" value={editLastName} onChange={(v) => setEditLastName(v)} />
+                        <TextInput label="Phone" value={editPhone} onChange={(v) => setEditPhone(v)} />
+                        <TextInput label="Email" value={editEmail} onChange={(v) => setEditEmail(v)} />
                     </div>
 
-                    <p className="text-sm font-medium text-gray-500 mt-4">Address</p>
-                    <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
-                        <TextInput label={"Country"} value={editCountry} onChange={(v) => setEditCountry(v)} />
-                        <TextInput label={"City"} value={editCity} onChange={(v) => setEditCity(v)} />
-                        <TextInput label={"Street"} value={editStreet} onChange={(v) => setEditStreet(v)} />
-                        <TextInput label={"PostCode"} value={editPostcode} onChange={(v) => setEditPostcode(v)} />
+                    <p className="text-sm font-medium text-slate-500 mt-2">Address</p>
+                    <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-slate-200">
+                        <TextInput label="Country" value={editCountry} onChange={(v) => setEditCountry(v)} />
+                        <TextInput label="City" value={editCity} onChange={(v) => setEditCity(v)} />
+                        <TextInput label="Street" value={editStreet} onChange={(v) => setEditStreet(v)} />
+                        <TextInput label="PostCode" value={editPostcode} onChange={(v) => setEditPostcode(v)} />
                     </div>
 
-                    <Dropdown label={"Gender"} value={editGendar} onChange={(v) => setEditGendar(v)} options={genderOptions} />
+                    <Dropdown label="Gender" value={editGendar} onChange={(v) => setEditGendar(v)} options={genderOptions} />
                 </div>
             ) : (
-
-                <div className="flex flex-col gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <DisplayField label="First Name" value={editFirstName} />
-                        <DisplayField label="Last Name" value={editLastName} />
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <p className="text-sm text-slate-500">First Name</p>
+                        <p className="mt-1 font-medium text-slate-900">{editFirstName || '-'}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <DisplayField label="Phone" value={editPhone} />
-                        <DisplayField label="Email" value={editEmail} />
+                    <div>
+                        <p className="text-sm text-slate-500">Last Name</p>
+                        <p className="mt-1 font-medium text-slate-900">{editLastName || '-'}</p>
                     </div>
-                    <DisplayField label="Country" value={editCountry} />
-                    <DisplayField label="City" value={editCity} />
-                    <DisplayField label="Street" value={editStreet} />
-                    <DisplayField label="PostCode" value={editPostcode} />
-                    <DisplayField label="Gender" value={editGendar} />
+                    <div>
+                        <p className="text-sm text-slate-500">Phone</p>
+                        <p className="mt-1 font-medium text-slate-900">{editPhone || '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Email</p>
+                        <p className="mt-1 font-medium text-slate-900">{editEmail || '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Country</p>
+                        <p className="mt-1 font-medium text-slate-900">{editCountry || '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">City</p>
+                        <p className="mt-1 font-medium text-slate-900">{editCity || '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Street</p>
+                        <p className="mt-1 font-medium text-slate-900">{editStreet || '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">PostCode</p>
+                        <p className="mt-1 font-medium text-slate-900">{editPostcode || '-'}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-500">Gender</p>
+                        <p className="mt-1 font-medium text-slate-900">{editGendar || '-'}</p>
+                    </div>
                 </div>
-
             )}
-        </div>
+        </section>
     )
 }
 
