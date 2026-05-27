@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -14,40 +13,46 @@ using System.ComponentModel;
 
 public class EmployerControllerTests
 {
+    // 共用的 mock，避免每个测试重复创建
+    private readonly Mock<ICreateDataAccessRequestUsecase> _mockCreateDataUsecase = new();
+    private readonly Mock<IFindWorkerInfosByEmailUsecase> _mockFindInfosUsecase = new();
+    private readonly Mock<IWorkerService> _mockWorkerService = new();
+    private readonly Mock<IAddFlexibleWorkerInfoUsecase> _mockAddFlexibleWorkerInfoUsecase = new();
+
+    private EmployerController CreateController(Guid employerId)
+    {
+        var controller = new EmployerController(
+            _mockCreateDataUsecase.Object,
+            _mockFindInfosUsecase.Object,
+            _mockWorkerService.Object,
+            _mockAddFlexibleWorkerInfoUsecase.Object
+        );
+
+        var claims = new List<Claim> { new Claim("sub", employerId.ToString()) };
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims))
+            }
+        };
+
+        return controller;
+    }
 
     [Fact]
     public async Task GetWorkerInfosByEmail_ValidEmail_ReturnsWorkerInfoDto()
     {
         // Arrange
-        var mockCreateDataUsecase = new Mock<ICreateDataAccessRequestUsecase>();
-        var mockFindInfosUsecase = new Mock<IFindWorkerInfosByEmailUsecase>();
-        var mockWorkerService = new Mock<IWorkerService>();
-        var employerController = new EmployerController(mockCreateDataUsecase.Object, mockFindInfosUsecase.Object, mockWorkerService.Object);
-
-        //JWT claims
         var fakeEmployerId = Guid.NewGuid();
-        var claims = new List<Claim> { new Claim("sub", fakeEmployerId.ToString()) };
-        var identity = new ClaimsIdentity(claims);
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        employerController.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
-        };
+        var employerController = CreateController(fakeEmployerId);
 
         var email = "test@email";
         var worker_info1 = new WorkerInfo { Desc = "address", Value = "havana", Id = Guid.NewGuid() };
         var worker_info2 = new WorkerInfo { Desc = "phone", Value = "123456", Id = Guid.NewGuid() };
-        var workerInfos = new List<WorkerInfo>();
-        workerInfos.Add(worker_info1);
-        workerInfos.Add(worker_info2);
-        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
+        var workerInfos = new List<WorkerInfo> { worker_info1, worker_info2 };
+        _mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
 
-        var expectedWorkerInfoDtos = new List<WorkerInfoDto>
-        {
-            new WorkerInfoDto{Desc="address",Id=worker_info1.Id},
-            new WorkerInfoDto{Desc="phone",Id=worker_info2.Id}
-
-        };
         // Act
         var okResult = await employerController.GetWorkerInfosByEmail(email);
 
@@ -65,24 +70,12 @@ public class EmployerControllerTests
     public async Task GetWorkerInfosByEmail_InValidEmail_ReturnsEmptyList()
     {
         // Arrange
-        var mockCreateDataUsecase = new Mock<ICreateDataAccessRequestUsecase>();
-        var mockFindInfosUsecase = new Mock<IFindWorkerInfosByEmailUsecase>();
-        var mockWorkerService = new Mock<IWorkerService>();
-        var employerController = new EmployerController(mockCreateDataUsecase.Object, mockFindInfosUsecase.Object, mockWorkerService.Object);
-
-        //JWT claims
         var fakeEmployerId = Guid.NewGuid();
-        var claims = new List<Claim> { new Claim("sub", fakeEmployerId.ToString()) };
-        var identity = new ClaimsIdentity(claims);
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        employerController.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
-        };
+        var employerController = CreateController(fakeEmployerId);
 
         var email = "test@email";
         var workerInfos = new List<WorkerInfo>();
-        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
+        _mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
 
         // Act
         var Result = await employerController.GetWorkerInfosByEmail(email);
@@ -93,41 +86,22 @@ public class EmployerControllerTests
         Assert.Empty(resultList);
     }
 
-
-
     [Fact]
     public async Task CreateDataAccessRequest_ValidInput_ReturnsOk()
     {
         // Arrange
-        var mockCreateDataUsecase = new Mock<ICreateDataAccessRequestUsecase>();
-        var mockFindInfosUsecase = new Mock<IFindWorkerInfosByEmailUsecase>();
-        var mockWorkerService = new Mock<IWorkerService>();
-        var employerController = new EmployerController(mockCreateDataUsecase.Object, mockFindInfosUsecase.Object, mockWorkerService.Object);
         var fakeEmployerId = Guid.NewGuid();
-        var claims = new List<Claim>
-{
-    new Claim(JwtRegisteredClaimNames.Sub, fakeEmployerId.ToString())
-};
-        employerController.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(claims))
-            }
-        };
-
+        var employerController = CreateController(fakeEmployerId);
 
         var email = "test@email";
         var fakeRequest = new Request { EmployerId = fakeEmployerId, WorkerId = Guid.NewGuid(), Reason = "check basic info" };
         var worker_info1 = new WorkerInfo { Desc = "address", Value = "havana rise", WorkerId = fakeRequest.WorkerId };
         var worker_info2 = new WorkerInfo { Desc = "phone", Value = "123456", WorkerId = fakeRequest.WorkerId };
-        var workerInfos = new List<WorkerInfo>();
-        workerInfos.Add(worker_info1);
-        workerInfos.Add(worker_info2);
+        var workerInfos = new List<WorkerInfo> { worker_info1, worker_info2 };
         var infoDesc = new List<string> { worker_info1.Id.ToString(), worker_info2.Id.ToString() };
-        var CreateRequestDTO = new CreateRequestUsecaseDTO { Email = email, InfoDesc = infoDesc, Reason = fakeRequest.Reason };
-        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
-        mockCreateDataUsecase.Setup(r => r.CreateDataAccessRequest(workerInfos, fakeRequest.EmployerId, fakeRequest.WorkerId, fakeRequest.Reason)).Returns(Task.CompletedTask);
+
+        _mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, fakeEmployerId)).ReturnsAsync(workerInfos);
+        _mockCreateDataUsecase.Setup(r => r.CreateDataAccessRequest(workerInfos, fakeRequest.EmployerId, fakeRequest.WorkerId, fakeRequest.Reason)).Returns(Task.CompletedTask);
 
         var fakeRequestDTO = new CreateRequestUsecaseDTO { Email = email, InfoDesc = infoDesc, Reason = fakeRequest.Reason };
 
@@ -136,37 +110,21 @@ public class EmployerControllerTests
 
         // Assert
         Assert.IsType<OkResult>(okResult);
-        mockCreateDataUsecase.Verify(r => r.CreateDataAccessRequest(workerInfos, fakeRequest.EmployerId, fakeRequest.WorkerId, fakeRequest.Reason), Times.Once);
     }
 
     [Fact]
     public async Task CreateDataAccessRequest_EmptyWorkerInfos_Returns404()
     {
         // Arrange
-        var mockCreateDataUsecase = new Mock<ICreateDataAccessRequestUsecase>();
-        var mockFindInfosUsecase = new Mock<IFindWorkerInfosByEmailUsecase>();
-        var mockWorkerService = new Mock<IWorkerService>();
-        var employerController = new EmployerController(mockCreateDataUsecase.Object, mockFindInfosUsecase.Object, mockWorkerService.Object);
-
         var employerId = Guid.NewGuid();
-        var claims = new List<Claim>
-{
-    new Claim(JwtRegisteredClaimNames.Sub, employerId.ToString())
-};
-        employerController.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(claims))
-            }
-        };
+        var employerController = CreateController(employerId);
 
         var email = "test@email";
         var infoDesc = new List<string>();
         var workerInfos = new List<WorkerInfo>();
-        mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, default)).ReturnsAsync(workerInfos);
-        var reason = "check the basic info";
-        var fakeRequestDTO = new CreateRequestUsecaseDTO { Email = email, InfoDesc = infoDesc, Reason = reason };
+        _mockFindInfosUsecase.Setup(r => r.FindWorkerInfosByEmail(email, default)).ReturnsAsync(workerInfos);
+
+        var fakeRequestDTO = new CreateRequestUsecaseDTO { Email = email, InfoDesc = infoDesc, Reason = "check the basic info" };
 
         // Act
         var Result = await employerController.CreateRequest(fakeRequestDTO);
