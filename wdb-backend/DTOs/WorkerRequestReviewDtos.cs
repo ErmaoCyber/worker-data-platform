@@ -13,6 +13,11 @@ public class WorkerActiveRequestDto
     public DateTime CreatedAt { get; set; }
 
     public List<WorkerRequestReviewItemDto> Items { get; set; } = new();
+
+    /// <summary>
+    /// Optional custom request made by the employer for a new field that does not exist yet.
+    /// </summary>
+    public WorkerCustomRequestDto? CustomRequest { get; set; }
 }
 
 /// <summary>
@@ -43,12 +48,23 @@ public class WorkerRequestReviewItemDto
     public string? CannotApproveReason { get; set; }
 }
 
+public class WorkerCustomRequestDto
+{
+    public string Description { get; set; } = string.Empty;
+    public string Status { get; set; } = "pending";
+}
+
 /// <summary>
 /// POST /api/worker/data-access/requests/{requestId}/review
 /// </summary>
 public class SubmitWorkerRequestReviewRequest
 {
     public List<SubmitWorkerRequestReviewItem> Items { get; set; } = new();
+
+    /// <summary>
+    /// Optional decision for request.custom_request.
+    /// </summary>
+    public SubmitWorkerCustomRequestDecision? CustomRequestDecision { get; set; }
 }
 
 public class SubmitWorkerRequestReviewItem
@@ -59,4 +75,27 @@ public class SubmitWorkerRequestReviewItem
     /// "approved" or "rejected".
     /// </summary>
     public string Decision { get; set; } = string.Empty;
+}
+
+public class SubmitWorkerCustomRequestDecision
+{
+    /// <summary>
+    /// "approved" or "rejected".
+    /// </summary>
+    public string Decision { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Required when decision = approved.
+    /// </summary>
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Required when decision = approved. Must be "text" or "file".
+    /// </summary>
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// Required when decision = approved.
+    /// </summary>
+    public string? Value { get; set; }
 }

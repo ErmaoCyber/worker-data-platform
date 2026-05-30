@@ -8,9 +8,10 @@ namespace wdb_backend.Usecases;
 
 /// <summary>
 /// Creates a data access request and the related permission rows.
-/// This version supports the new permission model:
+/// This version supports:
 /// - preset field request: field_id set, info_id null
 /// - custom field request: info_id set, field_id null
+/// - optional custom_request text stored on the request row
 /// </summary>
 public class CreateDataAccessRequestUsecaseImpl : ICreateDataAccessRequestUsecase
 {
@@ -30,25 +31,33 @@ public class CreateDataAccessRequestUsecaseImpl : ICreateDataAccessRequestUsecas
         Guid employerId,
         Guid workerId,
         string reason,
+        string? customRequest = null,
         CancellationToken cancellationToken = default)
     {
-        if (selectedItemIds == null || selectedItemIds.Count == 0)
+        var hasSelectedItems = selectedItemIds != null && selectedItemIds.Count > 0;
+        var hasCustomRequest = !string.IsNullOrWhiteSpace(customRequest);
+
+        if (!hasSelectedItems && !hasCustomRequest)
             throw new InvalidOperationException("NO_SELECTED_ITEMS");
 
         if (string.IsNullOrWhiteSpace(reason))
             throw new InvalidOperationException("REASON_REQUIRED");
 
-        var distinctIds = selectedItemIds.Distinct().ToList();
+        var distinctIds = selectedItemIds?
+            .Distinct()
+            .ToList() ?? new List<Guid>();
 
         var request = await _requestService.CreateAsync(
             employerId,
             workerId,
             reason.Trim(),
+            customRequest,
             cancellationToken);
 
         foreach (var selectedId in distinctIds)
         {
-            // 1. Custom or existing worker_info row.
+            // 1. Existing worker_info row.
+            // This covers existing custom fields and existing saved preset rows.
             var workerInfo = await _context.WorkerInfos
                 .Include(w => w.Field)
                 .FirstOrDefaultAsync(
@@ -79,6 +88,8 @@ public class CreateDataAccessRequestUsecaseImpl : ICreateDataAccessRequestUsecas
             }
 
             // 2. Preset field definition.
+            // This is the new field-first request flow:
+            // field_id is set, info_id is filled only after worker approves.
             var field = await _context.Fields
                 .FirstOrDefaultAsync(f => f.Id == selectedId, cancellationToken);
 

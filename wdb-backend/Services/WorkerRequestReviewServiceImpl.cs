@@ -9,9 +9,10 @@ namespace wdb_backend.Services;
 
 /// <summary>
 /// Worker-side request review service.
-/// This service supports the worker Data Access review flow:
+/// Supports:
 /// - list pending requests
 /// - approve/reject requested fields
+/// - approve/reject custom request by adding a new worker_info item
 ///
 /// Blockchain and notification side effects are intentionally not included here yet.
 /// </summary>
@@ -34,7 +35,10 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
             .Where(r =>
                 r.WorkerId == workerId &&
                 r.ExpiryDate > now &&
-                r.Permissions.Any(p => p.Status == PermissionStatus.Pending))
+                (
+                    r.Permissions.Any(p => p.Status == PermissionStatus.Pending) ||
+                    r.CustomRequestStatus == "pending"
+                ))
             .Include(r => r.Permissions)
                 .ThenInclude(p => p.Field)
                     .ThenInclude(f => f!.Category)
@@ -71,6 +75,16 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
                 ExpiryDate = request.ExpiryDate,
                 CreatedAt = request.CreatedAt
             };
+
+            if (!string.IsNullOrWhiteSpace(request.CustomRequest) &&
+                request.CustomRequestStatus == "pending")
+            {
+                dto.CustomRequest = new WorkerCustomRequestDto
+                {
+                    Description = request.CustomRequest,
+                    Status = request.CustomRequestStatus
+                };
+            }
 
             var pendingPermissions = request.Permissions
                 .Where(p => p.Status == PermissionStatus.Pending)
@@ -119,8 +133,11 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         SubmitWorkerRequestReviewRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (request.Items.Count == 0)
-            throw new InvalidOperationException("NO_REVIEW_ITEMS");
+        var hasItemReviews = request.Items.Count > 0;
+        var hasCustomDecision = request.CustomRequestDecision != null;
+
+        if (!hasItemReviews && !hasCustomDecision)
+            throw new InvalidOperationException("NO_REVIEW_ACTIONS");
 
         var dataRequest = await _context.Requests
             .Include(r => r.Permissions)
@@ -132,7 +149,31 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         if (dataRequest.ExpiryDate <= DateTime.UtcNow)
             throw new InvalidOperationException("REQUEST_EXPIRED");
 
-        var duplicatedPermissionIds = request.Items
+        await ReviewPermissionItemsAsync(
+            workerId,
+            dataRequest,
+            request.Items,
+            cancellationToken);
+
+        if (request.CustomRequestDecision != null)
+        {
+            await ReviewCustomRequestAsync(
+                workerId,
+                dataRequest,
+                request.CustomRequestDecision,
+                cancellationToken);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task ReviewPermissionItemsAsync(
+        Guid workerId,
+        Request dataRequest,
+        List<SubmitWorkerRequestReviewItem> items,
+        CancellationToken cancellationToken)
+    {
+        var duplicatedPermissionIds = items
             .GroupBy(i => i.PermissionId)
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
@@ -141,7 +182,7 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         if (duplicatedPermissionIds.Any())
             throw new InvalidOperationException("DUPLICATE_REVIEW_ITEM");
 
-        foreach (var item in request.Items)
+        foreach (var item in items)
         {
             var permission = dataRequest.Permissions
                 .FirstOrDefault(p => p.Id == item.PermissionId)
@@ -179,8 +220,79 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
                 throw new InvalidOperationException("INVALID_DECISION");
             }
         }
+    }
 
+    private async Task ReviewCustomRequestAsync(
+        Guid workerId,
+        Request dataRequest,
+        SubmitWorkerCustomRequestDecision decision,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(dataRequest.CustomRequest) ||
+            dataRequest.CustomRequestStatus != "pending")
+        {
+            throw new InvalidOperationException("CUSTOM_REQUEST_NOT_PENDING");
+        }
+
+        var normalizedDecision = decision.Decision.Trim().ToLowerInvariant();
+
+        if (normalizedDecision == "rejected")
+        {
+            dataRequest.CustomRequestStatus = "rejected";
+            return;
+        }
+
+        if (normalizedDecision != "approved")
+            throw new InvalidOperationException("INVALID_CUSTOM_REQUEST_DECISION");
+
+        var label = decision.Label?.Trim();
+        var type = decision.Type?.Trim().ToLowerInvariant();
+        var value = decision.Value?.Trim();
+
+        if (string.IsNullOrWhiteSpace(label))
+            throw new InvalidOperationException("CUSTOM_LABEL_REQUIRED");
+
+        if (type != "text" && type != "file")
+            throw new InvalidOperationException("INVALID_WORKER_INFO_TYPE");
+
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException("CUSTOM_VALUE_REQUIRED");
+
+        var duplicateExists = await _context.WorkerInfos
+            .AnyAsync(
+                w => w.WorkerId == workerId &&
+                     w.CustomLabel != null &&
+                     w.CustomLabel.ToLower() == label.ToLower(),
+                cancellationToken);
+
+        if (duplicateExists)
+            throw new InvalidOperationException("CUSTOM_LABEL_EXISTS");
+
+        var workerInfo = new WorkerInfo
+        {
+            WorkerId = workerId,
+            FieldId = null,
+            CustomLabel = label,
+            Type = type,
+            Value = value,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.WorkerInfos.Add(workerInfo);
         await _context.SaveChangesAsync(cancellationToken);
+
+        var permission = new Permission
+        {
+            RequestId = dataRequest.Id,
+            WorkerId = workerId,
+            FieldId = null,
+            InfoId = workerInfo.Id,
+            Status = PermissionStatus.Approved,
+            LastUpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Permissions.Add(permission);
+        dataRequest.CustomRequestStatus = "approved";
     }
 
     private static WorkerInfo? ResolveWorkerInfoForDisplay(
@@ -238,7 +350,6 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         Permission permission,
         CancellationToken cancellationToken)
     {
-        // Existing custom field or old permission format: info_id is already known.
         if (permission.InfoId.HasValue)
         {
             return await _context.WorkerInfos
@@ -247,8 +358,6 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
                     cancellationToken);
         }
 
-        // New preset permission format: request stores field_id first,
-        // approve step resolves the actual worker_info row.
         if (permission.FieldId.HasValue)
         {
             return await _context.WorkerInfos

@@ -13,4 +13,11 @@ public class CreateRequestUsecaseDTO
     public required List<string> InfoDesc { get; set; }
 
     public required string Reason { get; set; }
+
+    /// <summary>
+    /// Optional free-text request for data that does not exist as a preset field
+    /// or as an existing worker custom field.
+    /// Example: "Please provide your site access card number".
+    /// </summary>
+    public string? CustomRequest { get; set; }
 }

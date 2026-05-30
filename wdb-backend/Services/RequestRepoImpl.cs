@@ -15,25 +15,34 @@ public class RequestRepoImpl : IRequestRepository
     }
 
     /// <summary>
-    /// Create a new request. ExpiryDate defaults to 90 days from now;
-    /// callers can pass a custom value via the overload in Phase 2.
+    /// Create a new request.
+    /// ExpiryDate defaults to 90 days from now.
+    /// If customRequest is provided, it is stored as a pending custom request.
     /// </summary>
     public async Task<Request> AddAsync(
         Guid employerId,
         Guid workerId,
         string reason,
+        string? customRequest = null,
         CancellationToken cancellationToken = default)
     {
+        var trimmedCustomRequest = string.IsNullOrWhiteSpace(customRequest)
+            ? null
+            : customRequest.Trim();
+
         var request = new Request
         {
             EmployerId = employerId,
             WorkerId = workerId,
-            Reason = reason,
-            ExpiryDate = DateTime.UtcNow.AddDays(90)   // default; will be overridable in Phase 2
+            Reason = reason.Trim(),
+            ExpiryDate = DateTime.UtcNow.AddDays(90),
+            CustomRequest = trimmedCustomRequest,
+            CustomRequestStatus = trimmedCustomRequest == null ? null : "pending"
         };
 
         _dbContext.Requests.Add(request);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
         return request;
     }
 

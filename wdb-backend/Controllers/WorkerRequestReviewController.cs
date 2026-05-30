@@ -61,6 +61,7 @@ public class WorkerRequestReviewController : ControllerBase
 
     /// <summary>
     /// Submit approve/reject decisions for one request.
+    /// Also supports approving/rejecting the request.custom_request.
     /// </summary>
     [HttpPost("requests/{requestId}/review")]
     public async Task<IActionResult> SubmitReview(
@@ -92,6 +93,10 @@ public class WorkerRequestReviewController : ControllerBase
         {
             return NotFound(new { message = "Permission not found." });
         }
+        catch (InvalidOperationException ex) when (ex.Message == "NO_REVIEW_ACTIONS")
+        {
+            return BadRequest(new { message = "No review action was provided." });
+        }
         catch (InvalidOperationException ex) when (ex.Message == "NO_REVIEW_ITEMS")
         {
             return BadRequest(new { message = "No review items were provided." });
@@ -115,6 +120,30 @@ public class WorkerRequestReviewController : ControllerBase
         catch (InvalidOperationException ex) when (ex.Message == "PERMISSION_NOT_PENDING")
         {
             return Conflict(new { message = "Only pending permissions can be reviewed." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "CUSTOM_REQUEST_NOT_PENDING")
+        {
+            return Conflict(new { message = "There is no pending custom request to review." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "INVALID_CUSTOM_REQUEST_DECISION")
+        {
+            return BadRequest(new { message = "Custom request decision must be 'approved' or 'rejected'." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "CUSTOM_LABEL_REQUIRED")
+        {
+            return BadRequest(new { message = "Custom field label is required." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "INVALID_WORKER_INFO_TYPE")
+        {
+            return BadRequest(new { message = "Custom field type must be 'text' or 'file'." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "CUSTOM_VALUE_REQUIRED")
+        {
+            return BadRequest(new { message = "Custom field value is required." });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "CUSTOM_LABEL_EXISTS")
+        {
+            return Conflict(new { message = "A custom field with this label already exists." });
         }
         catch (Exception ex)
         {

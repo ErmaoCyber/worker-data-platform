@@ -24,8 +24,9 @@ public class AddFlexibleWorkerInfoUsecaseImpl : IAddFlexibleWorkerInfoUsecase
     }
 
     /// <summary>
-    /// Create a custom WorkerInfo placeholder (no value yet) and a Request so the
-    /// worker knows they are expected to fill it in.
+    /// Create a custom WorkerInfo placeholder with no value yet.
+    /// This is the older flexible request flow.
+    /// The new customRequest flow is handled through Employer/AccessRequests.
     /// </summary>
     public async Task ExecuteAsync(
         string workerEmail,
@@ -37,16 +38,21 @@ public class AddFlexibleWorkerInfoUsecaseImpl : IAddFlexibleWorkerInfoUsecase
     {
         var worker = await _workerService.GetByEmailAsync(workerEmail);
 
-        // Create a custom (Other) field — field_id is null, custom_label is set
         var workerInfo = new WorkerInfo
         {
             WorkerId = worker.Id,
-            CustomLabel = desc,      // replaces old Desc + Category
-            Type = "text",    // default; employer/worker can negotiate in Phase 2
-            Value = null       // not filled in yet
+            CustomLabel = desc,
+            Type = "text",
+            Value = null
         };
 
         await _workerInfoService.CreateAsync(worker.Id, workerInfo);
-        await _requestService.CreateAsync(employerId, worker.Id, reason, cancellationToken);
+
+        await _requestService.CreateAsync(
+            employerId,
+            worker.Id,
+            reason,
+            customRequest: null,
+            cancellationToken);
     }
 }

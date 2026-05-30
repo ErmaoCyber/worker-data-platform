@@ -127,6 +127,7 @@ public class EmployerController : ControllerBase
 
     /// <summary>
     /// Create a data access request for selected worker fields.
+    /// Also supports an optional customRequest for a new field the worker has not created yet.
     /// </summary>
     [Authorize]
     [HttpPost("AccessRequests")]
@@ -158,6 +159,7 @@ public class EmployerController : ControllerBase
                 employerId,
                 worker.Id,
                 request.Reason,
+                request.CustomRequest,
                 cancellationToken);
 
             return Ok(new { message = "Access request created." });
@@ -180,7 +182,7 @@ public class EmployerController : ControllerBase
         }
         catch (InvalidOperationException ex) when (ex.Message == "NO_SELECTED_ITEMS")
         {
-            return BadRequest(new { message = "Please select at least one field." });
+            return BadRequest(new { message = "Please select at least one field or provide a custom request." });
         }
         catch (InvalidOperationException ex) when (ex.Message == "REASON_REQUIRED")
         {
@@ -194,7 +196,7 @@ public class EmployerController : ControllerBase
 
     /// <summary>
     /// Request a worker to add a new custom field.
-    /// This remains as the separate flexible request flow for now.
+    /// This remains as the older separate flexible request flow for now.
     /// </summary>
     [Authorize]
     [HttpPost("AddFlexibleWorkerInfo")]
@@ -232,8 +234,6 @@ public class EmployerController : ControllerBase
 
         return new WorkerInfoDto
         {
-            // For preset fields, frontend should select fieldId.
-            // For custom fields, frontend should select workerInfoId.
             Id = isPreset
                 ? workerInfo.FieldId!.Value
                 : workerInfo.Id,
