@@ -198,57 +198,81 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
     }
 
     /// <summary>
-    /// Return worker_info rows that are available for this employer to request.
-    /// This currently returns saved worker_info rows only.
-    /// Preset fields that have not been filled yet are not requestable here.
+    /// Return requestable worker fields for this employer.
+    /// Includes:
+    /// - all preset fields, even if the worker has not filled them in yet
+    /// - existing custom fields created by this worker
+    ///
+    /// Excludes fields that this employer already has pending or approved access to.
     /// </summary>
     public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(
         Guid workerId,
         Guid employerId,
         CancellationToken cancellationToken = default)
     {
-        var availableInfos = await _context.WorkerInfos
-            .Include(w => w.Permissions)
-                .ThenInclude(p => p.Request)
-            .Include(w => w.Field)
-                .ThenInclude(f => f!.Category)
-            .Where(w =>
-                w.WorkerId == workerId &&
-                !w.Permissions.Any(p =>
-                    p.Request.EmployerId == employerId &&
-                    (p.Status == PermissionStatus.Pending ||
-                     p.Status == PermissionStatus.Approved)))
-            .OrderBy(w => w.Field != null ? w.Field.Category.CategoryName : "OtherInformation")
-            .ThenBy(w => w.Field != null ? w.Field.Label : w.CustomLabel)
+        var allItems = await GetAllWithPresetsAsync(workerId, cancellationToken);
+
+        var blockingPermissions = await _context.Permissions
+            .Include(p => p.Request)
+            .Where(p =>
+                p.WorkerId == workerId &&
+                p.Request.EmployerId == employerId &&
+                (p.Status == PermissionStatus.Pending ||
+                 p.Status == PermissionStatus.Approved))
             .ToListAsync(cancellationToken);
 
-        return availableInfos;
+        var result = allItems
+            .Where(item =>
+            {
+                if (item.FieldId.HasValue)
+                {
+                    return !blockingPermissions.Any(p => p.FieldId == item.FieldId.Value);
+                }
+
+                return !blockingPermissions.Any(p => p.InfoId == item.Id);
+            })
+            .OrderBy(w => w.Field != null ? w.Field.Category.CategoryName : "OtherInformation")
+            .ThenBy(w => w.Field != null ? w.Field.Label : w.CustomLabel)
+            .ToList();
+
+        return result;
     }
 
     /// <summary>
-    /// Return worker_info rows already requested by this employer.
+    /// Return worker fields already requested by this employer.
+    /// Includes preset placeholders where the permission only has field_id.
     /// </summary>
     public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(
         Guid workerId,
         Guid employerId,
         CancellationToken cancellationToken = default)
     {
-        var requestedInfos = await _context.WorkerInfos
-            .Include(w => w.Permissions)
-                .ThenInclude(p => p.Request)
-            .Include(w => w.Field)
-                .ThenInclude(f => f!.Category)
-            .Where(w =>
-                w.WorkerId == workerId &&
-                w.Permissions.Any(p =>
-                    p.Request.EmployerId == employerId &&
-                    (p.Status == PermissionStatus.Pending ||
-                     p.Status == PermissionStatus.Approved)))
-            .OrderBy(w => w.Field != null ? w.Field.Category.CategoryName : "OtherInformation")
-            .ThenBy(w => w.Field != null ? w.Field.Label : w.CustomLabel)
+        var allItems = await GetAllWithPresetsAsync(workerId, cancellationToken);
+
+        var requestedPermissions = await _context.Permissions
+            .Include(p => p.Request)
+            .Where(p =>
+                p.WorkerId == workerId &&
+                p.Request.EmployerId == employerId &&
+                (p.Status == PermissionStatus.Pending ||
+                 p.Status == PermissionStatus.Approved))
             .ToListAsync(cancellationToken);
 
-        return requestedInfos;
+        var result = allItems
+            .Where(item =>
+            {
+                if (item.FieldId.HasValue)
+                {
+                    return requestedPermissions.Any(p => p.FieldId == item.FieldId.Value);
+                }
+
+                return requestedPermissions.Any(p => p.InfoId == item.Id);
+            })
+            .OrderBy(w => w.Field != null ? w.Field.Category.CategoryName : "OtherInformation")
+            .ThenBy(w => w.Field != null ? w.Field.Label : w.CustomLabel)
+            .ToList();
+
+        return result;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────
