@@ -1,70 +1,76 @@
+using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
+using wdb_backend.Data;
 using wdb_backend.DTOs;
 
 namespace wdb_backend.Services;
 
 public class ActiveAccessServiceImpl : IActiveAccessService
 {
-    private readonly IPermissionService _permissionService;
-    private readonly IRequestService _requestService;
-    private readonly IWorkerInfoService _workerInfoService;
-    private readonly IEmployerService _employerService;
+    private readonly AppDbContext _context;
 
-    public ActiveAccessServiceImpl(
-        IPermissionService permissionService,
-        IRequestService requestService,
-        IWorkerInfoService workerInfoService,
-        IEmployerService employerService)
+    public ActiveAccessServiceImpl(AppDbContext context)
     {
-        _permissionService = permissionService;
-        _requestService = requestService;
-        _workerInfoService = workerInfoService;
-        _employerService = employerService;
+        _context = context;
     }
 
+    /// <summary>
+    /// Return active approved permissions for the worker.
+    /// A permission is active only when:
+    /// - permission.status = Approved
+    /// - related request has not expired
+    /// </summary>
     public async Task<List<ActiveAccessDto>> GetActiveAccessAsync(
         Guid workerId,
         string? company = null,
         string? dataType = null)
     {
-        var requests = await _requestService.GetAllByWorkerIdAsync(workerId);
-        var approvedPermissions = await _permissionService.GetAllByWorkerIdAsync(workerId, PermissionStatus.Approved);
-        var workerInfos = await _workerInfoService.GetAllAsync(workerId);
         var now = DateTime.UtcNow;
 
-        // ExpiryDate is now on Request, not Permission — filter by request expiry
-        var activePermissions = approvedPermissions
-            .Where(p =>
-            {
-                var req = requests.FirstOrDefault(r => r.Id == p.RequestId);
-                return req != null && req.ExpiryDate > now;
-            })
-            .ToList();
+        var requests = await _context.Requests
+            .Where(r =>
+                r.WorkerId == workerId &&
+                r.ExpiryDate > now &&
+                r.Permissions.Any(p => p.Status == PermissionStatus.Approved))
+            .Include(r => r.Permissions)
+                .ThenInclude(p => p.WorkerInfo)
+                    .ThenInclude(w => w!.Field)
+                        .ThenInclude(f => f!.Category)
+            .Include(r => r.Permissions)
+                .ThenInclude(p => p.Field)
+                    .ThenInclude(f => f!.Category)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
 
         var rows = new List<ActiveAccessDto>();
 
         foreach (var request in requests)
         {
-            var permsForRequest = activePermissions
-                .Where(p => p.RequestId == request.Id)
-                .ToList();
+            var employer = await _context.Employers
+                .FirstOrDefaultAsync(e => e.Id == request.EmployerId);
 
-            if (!permsForRequest.Any()) continue;
-
-            var employer = await _employerService.GetEmployerInfoAsync(request.EmployerId);
             var companyName = employer?.Name ?? "Unknown";
 
             if (!string.IsNullOrWhiteSpace(company) &&
                 !companyName.Contains(company, StringComparison.OrdinalIgnoreCase))
+            {
                 continue;
+            }
 
-            var infoItems = permsForRequest
+            var approvedPermissions = request.Permissions
+                .Where(p => p.Status == PermissionStatus.Approved)
+                .ToList();
+
+            var infoItems = approvedPermissions
                 .Select(p =>
                 {
-                    var info = workerInfos.FirstOrDefault(w => w.Id == p.InfoId);
-                    // Use CustomLabel for custom fields, Field navigation label for preset fields
-                    var label = info?.CustomLabel ?? info?.Field?.Label ?? "Unknown";
+                    var label =
+                        p.Field?.Label ??
+                        p.WorkerInfo?.Field?.Label ??
+                        p.WorkerInfo?.CustomLabel ??
+                        "Unknown";
+
                     return new ActiveAccessInfoDto
                     {
                         PermissionId = p.Id,
@@ -79,19 +85,54 @@ public class ActiveAccessServiceImpl : IActiveAccessService
                     .Where(i => i.DataType.Equals(dataType, StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                if (!infoItems.Any()) continue;
+                if (!infoItems.Any())
+                    continue;
             }
 
             rows.Add(new ActiveAccessDto
             {
                 RequestId = request.Id,
                 CompanyName = companyName,
-                GrantedAt = permsForRequest.Max(p => p.LastUpdatedAt) ?? DateTime.UtcNow,
+                GrantedAt = approvedPermissions.Max(p => p.LastUpdatedAt) ?? DateTime.UtcNow,
                 Reason = request.Reason,
                 WorkerInfo = infoItems
             });
         }
 
-        return rows.OrderByDescending(r => r.GrantedAt).ToList();
+        return rows
+            .OrderByDescending(r => r.GrantedAt)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Revoke one approved active permission.
+    /// This only updates database status for now.
+    /// Blockchain and notification side effects can be added later.
+    /// </summary>
+    public async Task RevokePermissionAsync(
+        Guid workerId,
+        Guid permissionId,
+        CancellationToken cancellationToken = default)
+    {
+        var permission = await _context.Permissions
+            .Include(p => p.Request)
+            .FirstOrDefaultAsync(
+                p => p.Id == permissionId && p.WorkerId == workerId,
+                cancellationToken)
+            ?? throw new KeyNotFoundException("PERMISSION_NOT_FOUND");
+
+        if (permission.Request.WorkerId != workerId)
+            throw new UnauthorizedAccessException("PERMISSION_NOT_OWNED_BY_WORKER");
+
+        if (permission.Status != PermissionStatus.Approved)
+            throw new InvalidOperationException("PERMISSION_NOT_APPROVED");
+
+        if (permission.Request.ExpiryDate <= DateTime.UtcNow)
+            throw new InvalidOperationException("REQUEST_EXPIRED");
+
+        permission.Status = PermissionStatus.Revoked;
+        permission.LastUpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

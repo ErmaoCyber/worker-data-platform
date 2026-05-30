@@ -8,4 +8,12 @@ public interface IActiveAccessService
         Guid workerId,
         string? company = null,
         string? dataType = null);
+
+    /// <summary>
+    /// Revoke one approved active permission owned by the worker.
+    /// </summary>
+    Task RevokePermissionAsync(
+        Guid workerId,
+        Guid permissionId,
+        CancellationToken cancellationToken = default);
 }
