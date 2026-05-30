@@ -2,19 +2,56 @@ namespace wdb_backend.DTOs;
 
 // ── Response DTOs ─────────────────────────────────────────────
 
-/// <summary>A single field item returned in the profile response.</summary>
+/// <summary>
+/// A single field item returned in the worker profile response.
+/// It supports both preset fields and custom worker-created fields.
+/// </summary>
 public class WorkerProfileFieldDto
 {
-    public Guid InfoId { get; set; }       // worker_info.id (null if not filled yet)
-    public Guid? FieldId { get; set; }       // preset field id; null for custom
-    public string Label { get; set; } = string.Empty;  // display label
-    public string Type { get; set; } = string.Empty;  // "text" or "file"
-    public string? Value { get; set; }       // null = not filled
-    public bool IsPreset { get; set; }       // true = preset, false = custom
-    public bool HasValue => Value != null;
+    /// <summary>
+    /// worker_info.id.
+    /// Null means this is a preset field that has not been filled/saved yet.
+    /// </summary>
+    public Guid? InfoId { get; set; }
+
+    /// <summary>
+    /// fields.id for preset fields. Null for custom fields.
+    /// </summary>
+    public Guid? FieldId { get; set; }
+
+    /// <summary>
+    /// Display label.
+    /// For preset fields: fields.label.
+    /// For custom fields: worker_info.custom_label.
+    /// </summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// "text" or "file".
+    /// For preset fields, this comes from fields.allowed_type.
+    /// For custom fields, this comes from worker_info.type.
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Stored value. Null means the worker has not filled it in or has cleared it.
+    /// </summary>
+    public string? Value { get; set; }
+
+    /// <summary>
+    /// True for preset fields; false for custom fields.
+    /// </summary>
+    public bool IsPreset { get; set; }
+
+    /// <summary>
+    /// Simple frontend helper.
+    /// </summary>
+    public bool HasValue => !string.IsNullOrWhiteSpace(Value);
 }
 
-/// <summary>A category group containing its fields.</summary>
+/// <summary>
+/// A category group containing profile fields.
+/// </summary>
 public class WorkerProfileCategoryDto
 {
     public string Category { get; set; } = string.Empty;
@@ -23,24 +60,46 @@ public class WorkerProfileCategoryDto
 
 // ── Request DTOs ──────────────────────────────────────────────
 
-/// <summary>PUT /api/worker/profile/preset — update value of a preset field.</summary>
+/// <summary>
+/// PUT /api/worker/profile/preset
+/// Fill in or update the value of a preset field.
+/// Label and type are locked by the fields table.
+/// </summary>
 public class UpdatePresetFieldRequest
 {
-    public Guid FieldId { get; set; }   // the preset field definition id
-    public string? Value { get; set; }   // new value (null to clear)
-}
+    public Guid FieldId { get; set; }
 
-/// <summary>POST /api/worker/profile/custom — create a new custom (Other) field.</summary>
-public class CreateCustomFieldRequest
-{
-    public required string Label { get; set; }   // custom label
-    public required string Type { get; set; }   // "text" or "file"
+    /// <summary>
+    /// New value. Null means clear the value.
+    /// </summary>
     public string? Value { get; set; }
 }
 
-/// <summary>PUT /api/worker/profile/custom/{id} — update label and/or value of a custom field.</summary>
+/// <summary>
+/// POST /api/worker/profile/custom
+/// Create a new custom OtherInformation field.
+/// </summary>
+public class CreateCustomFieldRequest
+{
+    public required string Label { get; set; }
+
+    /// <summary>
+    /// Must be "text" or "file".
+    /// Type is immutable after creation.
+    /// </summary>
+    public required string Type { get; set; }
+
+    public string? Value { get; set; }
+}
+
+/// <summary>
+/// PUT /api/worker/profile/custom/{id}
+/// Update a custom field.
+/// Label can be omitted to keep the existing label.
+/// Value is treated as a replacement value; null means clear the value.
+/// </summary>
 public class UpdateCustomFieldRequest
 {
-    public string? Label { get; set; }   // new label (null = keep existing)
-    public string? Value { get; set; }   // new value (null = keep existing)
+    public string? Label { get; set; }
+    public string? Value { get; set; }
 }

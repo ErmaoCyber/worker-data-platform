@@ -1,10 +1,7 @@
-using System.ComponentModel;
 using Microsoft.EntityFrameworkCore;
-using Nethereum.Model;
 using wdb_backend.Abstractions;
 using wdb_backend.Data;
 using wdb_backend.Models;
-
 
 namespace wdb_backend.Services;
 
@@ -17,44 +14,64 @@ public class EmployerRepoImpl : IEmployerRepository
         _context = context;
     }
 
-    public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<bool> EmailExistsAsync(
+        string email,
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Employers.AnyAsync(employer => employer.Email == email, cancellationToken);
+        return await _context.Employers
+            .AnyAsync(employer => employer.Email == email, cancellationToken);
     }
 
-    public async Task<Employer?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<Employer?> GetByEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Employers.FirstOrDefaultAsync(employer => employer.Email.Equals(email), cancellationToken);
+        return await _context.Employers
+            .FirstOrDefaultAsync(employer => employer.Email == email, cancellationToken);
     }
 
-    public async Task AddAsync(Employer employer, CancellationToken cancellationToken = default)
+    public async Task AddAsync(
+        Employer employer,
+        CancellationToken cancellationToken = default)
     {
+        // Some database instances do not have a default value for created_at.
+        // Set it here so registration does not fail on NOT NULL constraint.
+        if (employer.CreatedAt == default)
+        {
+            employer.CreatedAt = DateTime.UtcNow;
+        }
+
         await _context.Employers.AddAsync(employer, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public Task<Employer> UpdateByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public Task<Employer> UpdateByEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public Task<Employer> DeleteByEmailAsync(string email, CancellationToken cancellationToken = default)
+    public Task<Employer> DeleteByEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    //GetByIdAsync()
-    //get all information of employer by employer id
-    //name, email, blockchainaddress and privatekey of a employer can be extracted from this method
-
-    public async Task<Employer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Employer?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Employers.FirstOrDefaultAsync(employer => employer.Id == id, cancellationToken);
+        return await _context.Employers
+            .FirstOrDefaultAsync(employer => employer.Id == id, cancellationToken);
     }
 
-    public async Task<List<Employer>> GetDistinctEmployers(CancellationToken cancellationToken = default)
+    public async Task<List<Employer>> GetDistinctEmployers(
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Employers.Distinct().ToListAsync(cancellationToken);
+        return await _context.Employers
+            .Distinct()
+            .ToListAsync(cancellationToken);
     }
-
 }
