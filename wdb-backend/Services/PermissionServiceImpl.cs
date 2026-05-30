@@ -13,28 +13,36 @@ public class PermissionServiceImpl : IPermissionService
         _permissionRepository = permissionRepository;
     }
 
-    /// <summary>Bulk-create permissions for all selected WorkerInfo rows.</summary>
+    /// <summary>
+    /// Bulk-create permissions for selected worker info rows.
+    /// Note: This method still supports the older flow where info_id is set immediately.
+    /// The new worker review flow can also handle field_id-first permissions.
+    /// </summary>
     public async Task CreateAllByRequestAsync(
         Request request,
         List<WorkerInfo> workerInfos,
         CancellationToken cancellationToken = default)
     {
-        await _permissionRepository.AddAllByRequestAsync(request, workerInfos, cancellationToken);
+        await _permissionRepository.AddAllByRequestAsync(
+            request,
+            workerInfos,
+            cancellationToken);
     }
 
     /// <summary>
-    /// Update permission status (0=Pending,1=Approved,2=Rejected,3=Revoked).
-    /// Throws InvalidOperationException if the permission is already in a terminal state.
+    /// Update permission status.
+    /// This legacy method does not resolve info_id for preset approval.
+    /// Prefer WorkerRequestReviewServiceImpl for worker review submission.
     /// </summary>
     public async Task<Permission> UpdateAsync(
         Guid permissionId,
         int status,
         CancellationToken cancellationToken = default)
     {
-        var permission = await _permissionRepository.GetOneAsync(permissionId, cancellationToken)
-            ?? throw new KeyNotFoundException();
+        var permission = await _permissionRepository.GetOneAsync(
+            permissionId,
+            cancellationToken);
 
-        // Terminal states cannot be changed
         if (permission.Status == PermissionStatus.Rejected ||
             permission.Status == PermissionStatus.Revoked)
         {
@@ -45,32 +53,41 @@ public class PermissionServiceImpl : IPermissionService
         permission.Status = status;
         permission.LastUpdatedAt = DateTime.UtcNow;
 
-        return await _permissionRepository.UpdateAsync(permissionId, permission, cancellationToken);
+        return await _permissionRepository.UpdateAsync(
+            permissionId,
+            permission,
+            cancellationToken);
     }
 
-    /// <summary>
-    /// Get all permissions for a worker. Pass status=-1 to skip filtering.
-    /// </summary>
     public async Task<List<Permission>> GetAllByWorkerIdAsync(
         Guid workerId,
         int status = -1,
         CancellationToken cancellationToken = default)
     {
-        var result = await _permissionRepository.GetAllByWorkerIdAsync(workerId, cancellationToken)
-            ?? throw new KeyNotFoundException();
+        var result = await _permissionRepository.GetAllByWorkerIdAsync(
+            workerId,
+            cancellationToken);
 
         return status == -1
             ? result
             : result.Where(x => x.Status == status).ToList();
     }
 
-    public Task<IReadOnlyList<Permission>> GetAllByRequestIdAsync(
+    public async Task<IReadOnlyList<Permission>> GetAllByRequestIdAsync(
         Guid requestId,
         CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
+    {
+        return await _permissionRepository.GetAllByRequestIdAsync(
+            requestId,
+            cancellationToken);
+    }
 
-    public Task<Permission> GetByIdAsync(
+    public async Task<Permission> GetByIdAsync(
         Guid permissionId,
         CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
+    {
+        return await _permissionRepository.GetOneAsync(
+            permissionId,
+            cancellationToken);
+    }
 }

@@ -15,7 +15,12 @@ public class PermissionRepoImpl : IPermissionRepository
         _dbContext = dbContext;
     }
 
-    /// <summary>Create one permission per WorkerInfo item under a request.</summary>
+    /// <summary>
+    /// Create one permission per WorkerInfo item under a request.
+    /// This still supports the old existing-info request flow.
+    /// For new preset field-first requests, a later employer-side update should create
+    /// permissions with field_id and info_id = null.
+    /// </summary>
     public async Task AddAllByRequestAsync(
         Request request,
         List<WorkerInfo> workerInfos,
@@ -27,7 +32,9 @@ public class PermissionRepoImpl : IPermissionRepository
         }
     }
 
-    /// <summary>Create a single permission row. info_id is set immediately (existing data rows).</summary>
+    /// <summary>
+    /// Create a permission linked to an existing worker_info row.
+    /// </summary>
     public async Task AddOneByRequestAsync(
         Request request,
         WorkerInfo workerInfo,
@@ -35,17 +42,21 @@ public class PermissionRepoImpl : IPermissionRepository
     {
         var permission = new Permission
         {
-            InfoId = workerInfo.Id,   // nullable — set here because the row already exists
+            InfoId = workerInfo.Id,
+            FieldId = workerInfo.FieldId,
             RequestId = request.Id,
             WorkerId = workerInfo.WorkerId,
-            Status = PermissionStatus.Pending
+            Status = PermissionStatus.Pending,
+            LastUpdatedAt = DateTime.UtcNow
         };
 
         _dbContext.Permissions.Add(permission);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>Persist status and timestamp changes to a permission.</summary>
+    /// <summary>
+    /// Persist permission changes.
+    /// </summary>
     public async Task<Permission> UpdateAsync(
         Guid permissionId,
         Permission permission,
@@ -55,40 +66,58 @@ public class PermissionRepoImpl : IPermissionRepository
             .FirstOrDefaultAsync(x => x.Id == permissionId, cancellationToken)
             ?? throw new KeyNotFoundException();
 
+        item.FieldId = permission.FieldId;
+        item.InfoId = permission.InfoId;
         item.Status = permission.Status;
         item.LastUpdatedAt = permission.LastUpdatedAt;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return item;
+
+        return await GetOneAsync(permissionId, cancellationToken);
     }
 
-    /// <summary>Get all permissions for a request.</summary>
     public async Task<List<Permission>> GetAllByRequestIdAsync(
         Guid requestId,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.Permissions
             .Where(x => x.RequestId == requestId)
+            .Include(p => p.Request)
+            .Include(p => p.Field)
+                .ThenInclude(f => f!.Category)
+            .Include(p => p.WorkerInfo)
+                .ThenInclude(w => w!.Field)
+                    .ThenInclude(f => f!.Category)
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>Get a single permission by ID.</summary>
     public async Task<Permission> GetOneAsync(
         Guid permissionId,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.Permissions
+            .Include(p => p.Request)
+            .Include(p => p.Field)
+                .ThenInclude(f => f!.Category)
+            .Include(p => p.WorkerInfo)
+                .ThenInclude(w => w!.Field)
+                    .ThenInclude(f => f!.Category)
             .FirstOrDefaultAsync(x => x.Id == permissionId, cancellationToken)
             ?? throw new KeyNotFoundException();
     }
 
-    /// <summary>Get all permissions for a worker.</summary>
     public async Task<List<Permission>> GetAllByWorkerIdAsync(
         Guid workerId,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.Permissions
             .Where(x => x.WorkerId == workerId)
+            .Include(p => p.Request)
+            .Include(p => p.Field)
+                .ThenInclude(f => f!.Category)
+            .Include(p => p.WorkerInfo)
+                .ThenInclude(w => w!.Field)
+                    .ThenInclude(f => f!.Category)
             .ToListAsync(cancellationToken);
     }
 }
