@@ -12,6 +12,7 @@ namespace wdb_backend.Usecases;
 /// - preset field request: field_id set, info_id null
 /// - custom field request: info_id set, field_id null
 /// - optional custom_request text stored on the request row
+/// It also creates a NEW_REQUEST notification for the worker.
 /// </summary>
 public class CreateDataAccessRequestUsecaseImpl : ICreateDataAccessRequestUsecase
 {
@@ -88,8 +89,7 @@ public class CreateDataAccessRequestUsecaseImpl : ICreateDataAccessRequestUsecas
             }
 
             // 2. Preset field definition.
-            // This is the new field-first request flow:
-            // field_id is set, info_id is filled only after worker approves.
+            // field_id is set first, info_id is filled only after worker approves.
             var field = await _context.Fields
                 .FirstOrDefaultAsync(f => f.Id == selectedId, cancellationToken);
 
@@ -118,6 +118,16 @@ public class CreateDataAccessRequestUsecaseImpl : ICreateDataAccessRequestUsecas
 
             throw new KeyNotFoundException("SELECTED_ITEM_NOT_FOUND");
         }
+
+        // Notify the worker that a new request is waiting for review.
+        _context.Notifications.Add(new wdb_backend.Models.Notification
+        {
+            RecipientWorkerId = workerId,
+            RecipientEmployerId = null,
+            Type = "NEW_REQUEST",
+            RequestId = request.Id,
+            IsRead = false
+        });
 
         await _context.SaveChangesAsync(cancellationToken);
     }

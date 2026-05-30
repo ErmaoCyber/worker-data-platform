@@ -14,7 +14,8 @@ namespace wdb_backend.Services;
 /// - approve/reject requested fields
 /// - approve/reject custom request by adding a new worker_info item
 ///
-/// Blockchain and notification side effects are intentionally not included here yet.
+/// This version also creates a REQUEST_REVIEWED notification for the employer.
+/// Blockchain side effects are intentionally not included here yet.
 /// </summary>
 public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
 {
@@ -163,6 +164,16 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
                 request.CustomRequestDecision,
                 cancellationToken);
         }
+
+        // Notify the employer that the worker has reviewed the request.
+        _context.Notifications.Add(new wdb_backend.Models.Notification
+        {
+            RecipientWorkerId = null,
+            RecipientEmployerId = dataRequest.EmployerId,
+            Type = "REQUEST_REVIEWED",
+            RequestId = dataRequest.Id,
+            IsRead = false
+        });
 
         await _context.SaveChangesAsync(cancellationToken);
     }

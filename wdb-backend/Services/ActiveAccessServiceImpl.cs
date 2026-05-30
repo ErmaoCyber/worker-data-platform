@@ -106,8 +106,8 @@ public class ActiveAccessServiceImpl : IActiveAccessService
 
     /// <summary>
     /// Revoke one approved active permission.
-    /// This only updates database status for now.
-    /// Blockchain and notification side effects can be added later.
+    /// This updates database status and creates an ACCESS_REVOKED notification for the employer.
+    /// Blockchain side effects can be added later.
     /// </summary>
     public async Task RevokePermissionAsync(
         Guid workerId,
@@ -132,6 +132,16 @@ public class ActiveAccessServiceImpl : IActiveAccessService
 
         permission.Status = PermissionStatus.Revoked;
         permission.LastUpdatedAt = DateTime.UtcNow;
+
+        // Notify the employer that the worker revoked access.
+        _context.Notifications.Add(new wdb_backend.Models.Notification
+        {
+            RecipientWorkerId = null,
+            RecipientEmployerId = permission.Request.EmployerId,
+            Type = "ACCESS_REVOKED",
+            RequestId = permission.RequestId,
+            IsRead = false
+        });
 
         await _context.SaveChangesAsync(cancellationToken);
     }
