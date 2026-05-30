@@ -39,14 +39,14 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:5258';
 
 export async function getWorkerDashboard(
-  workerId: string,
+  token: string,
 ): Promise<WorkerDashboardResponse> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/worker/dashboard/${workerId}`,
-    {
-      method: 'GET',
+  const response = await fetch(`${API_BASE_URL}/api/worker/dashboard/me`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
 
   if (!response.ok) {
     throw new Error('Failed to load worker dashboard.');
