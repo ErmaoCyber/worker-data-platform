@@ -21,21 +21,20 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
     {
         var employerExists = await _context.Employers
             .AsNoTracking()
-            .AnyAsync(employer => employer.Id == employerId, cancellationToken);
+            .AnyAsync(e => e.Id == employerId, cancellationToken);
 
         if (!employerExists)
-        {
             throw new UnauthorizedAccessException("Current user is not an employer.");
-        }
 
+        var now = DateTime.UtcNow;
+
+        // Left join to workerInfo — info_id may be null for pending preset permissions
         var requestRows = await (
             from request in _context.Requests.AsNoTracking()
-            join worker in _context.Workers.AsNoTracking()
-                on request.WorkerId equals worker.Id
-            join permission in _context.Permissions.AsNoTracking()
-                on request.Id equals permission.RequestId
-            join workerInfo in _context.WorkerInfos.AsNoTracking()
-                on permission.InfoId equals workerInfo.Id
+            join worker in _context.Workers.AsNoTracking() on request.WorkerId equals worker.Id
+            join permission in _context.Permissions.AsNoTracking() on request.Id equals permission.RequestId
+            join workerInfo in _context.WorkerInfos.AsNoTracking() on permission.InfoId equals workerInfo.Id into wiGroup
+            from workerInfo in wiGroup.DefaultIfEmpty()
             where request.EmployerId == employerId
             select new SentRequestRow
             {
@@ -45,21 +44,21 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
                 WorkerEmail = worker.Email,
                 Reason = request.Reason,
                 RequestedAt = request.CreatedAt,
-                DataType = workerInfo.Desc,
+                // Use CustomLabel for custom fields, Field.Label for preset; fall back to "Pending"
+                DataType = workerInfo == null
+                                    ? "Pending"
+                                    : (workerInfo.CustomLabel ?? workerInfo.Field!.Label),
                 PermissionStatus = permission.Status,
-                ExpiryDate = permission.ExpiryDate,
-                LastUpdatedAt = permission.LastUpdatedAt
+                ExpiryDate = request.ExpiryDate,   // moved from permission to request
+                LastUpdatedAt = permission.LastUpdatedAt ?? DateTime.MinValue
             }
         ).ToListAsync(cancellationToken);
-
-        var now = DateTime.UtcNow;
 
         return requestRows
             .GroupBy(row => row.RequestId)
             .Select(group =>
             {
                 var rows = group.ToList();
-
                 return new EmployerSentRequestDto
                 {
                     RequestId = group.Key,
@@ -68,51 +67,28 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
                     WorkerEmail = rows.First().WorkerEmail,
                     Reason = rows.First().Reason,
                     RequestedAt = rows.First().RequestedAt,
-                    LastUpdatedAt = rows.Max(row => row.LastUpdatedAt),
+                    LastUpdatedAt = rows.Max(r => r.LastUpdatedAt),
                     Status = GetRequestStatus(rows, now),
-                    RequestedDataTypes = rows
-                        .Select(row => row.DataType)
-                        .Distinct()
-                        .ToList()
+                    RequestedDataTypes = rows.Select(r => r.DataType).Distinct().ToList()
                 };
             })
-            .OrderByDescending(request => request.LastUpdatedAt)
+            .OrderByDescending(r => r.LastUpdatedAt)
             .ToList();
     }
 
-    private static string GetRequestStatus(
-        List<SentRequestRow> rows,
-        DateTime now)
+    private static string GetRequestStatus(List<SentRequestRow> rows, DateTime now)
     {
-        if (rows.Count == 0)
-        {
-            return "Unknown";
-        }
+        if (rows.Count == 0) return "Unknown";
 
-        if (rows.All(row => row.PermissionStatus == PermissionStatus.Pending))
-        {
-            return "Pending";
-        }
+        if (rows.All(r => r.PermissionStatus == PermissionStatus.Pending)) return "Pending";
+        if (rows.All(r => r.PermissionStatus == PermissionStatus.Rejected)) return "Rejected";
+        if (rows.Any(r => r.PermissionStatus == PermissionStatus.Revoked)) return "Revoked";
 
-        if (rows.All(row => row.PermissionStatus == PermissionStatus.Rejected))
-        {
-            return "Rejected";
-        }
-
-        if (rows.All(row =>
-            row.PermissionStatus == PermissionStatus.Approved &&
-            (!row.ExpiryDate.HasValue || row.ExpiryDate.Value > now)))
-        {
+        if (rows.All(r => r.PermissionStatus == PermissionStatus.Approved && r.ExpiryDate > now))
             return "Approved";
-        }
 
-        if (rows.All(row =>
-            row.PermissionStatus == PermissionStatus.Approved &&
-            row.ExpiryDate.HasValue &&
-            row.ExpiryDate.Value <= now))
-        {
+        if (rows.All(r => r.PermissionStatus == PermissionStatus.Approved && r.ExpiryDate <= now))
             return "Expired";
-        }
 
         return "Partial";
     }
@@ -120,23 +96,14 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
     private class SentRequestRow
     {
         public Guid RequestId { get; set; }
-
         public Guid WorkerId { get; set; }
-
         public string WorkerName { get; set; } = string.Empty;
-
         public string WorkerEmail { get; set; } = string.Empty;
-
         public string Reason { get; set; } = string.Empty;
-
         public DateTime RequestedAt { get; set; }
-
         public string DataType { get; set; } = string.Empty;
-
-        public PermissionStatus PermissionStatus { get; set; }
-
-        public DateTime? ExpiryDate { get; set; }
-
+        public int PermissionStatus { get; set; }
+        public DateTime ExpiryDate { get; set; }
         public DateTime LastUpdatedAt { get; set; }
     }
 }

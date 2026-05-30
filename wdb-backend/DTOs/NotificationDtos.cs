@@ -3,12 +3,45 @@ using wdb_backend.Common;
 
 namespace wdb_backend.DTOs;
 
-public record NotificationInfo(Guid EmployerId, Guid WorkerId, Guid WorkerInfoId);
+/// <summary>
+/// Notification event published via MediatR.
+/// RequestId + FieldLabel replace the old WorkerInfoId.
+/// </summary>
+public record NotificationEvent(
+    Guid EmployerId,
+    Guid WorkerId,
+    Guid? RequestId,
+    string? FieldLabel,
+    NotificationType Type,
+    DateTime CreateAt
+) : INotification;
 
-public record NotificationCommand(Guid EmployerId, Guid WorkerId, Guid WorkerInfoId, NotificationType Type) : IRequest;
+/// <summary>Inbound DTO from the notification API endpoints.</summary>
+public record NotificationInfo(Guid EmployerId, Guid WorkerId, Guid? RequestId);
 
-public record NotificationEvent(Guid EmployerId, Guid WorkerId, Guid WorkerInfoId, NotificationType Type, DateTime CreateAt) : INotification;
+/// <summary>Command dispatched by NotificationController to NotificationCommandHandler.</summary>
+public record NotificationCommand(
+    Guid EmployerId,
+    Guid WorkerId,
+    Guid? RequestId,
+    string? FieldLabel,
+    NotificationType Type
+) : IRequest;
 
-// dto to hold the readable info
-public record NotificationFormat(string? EmployerName, string? WorkerName, string NotificationType, string? WorkInfoDesc, DateTime NotificationTime);
-public record NotificationFormatComponent(Guid Id, string? EmployerName, string? WorkerName, string NotificationType, string? WorkerInfoDesc, DateTime NotificationTime);
+/// <summary>Human-readable notification data for display.</summary>
+public record NotificationFormat(
+    string? EmployerName,
+    string? WorkerName,
+    string NotificationType,
+    string? WorkInfoDesc,
+    DateTime NotificationTime
+);
+
+public record NotificationFormatComponent(
+    Guid Id,
+    string? EmployerName,
+    string? WorkerName,
+    string NotificationType,
+    string? WorkerInfoDesc,
+    DateTime NotificationTime
+);

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
+using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.DTOs;
 
@@ -29,21 +30,15 @@ public class WorkerDashboardServiceImpl : IWorkerDashboardService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == workerId, cancellationToken);
 
-        if (worker == null)
-        {
-            return null;
-        }
+        if (worker == null) return null;
 
-        // Each row represents one requested permission item.
-        // This gives the frontend enough data to show a dashboard table.
+        // Each row = one permission item. ExpiryDate is on Request.
         var latestRequests = await (
             from request in _dbContext.Requests.AsNoTracking()
-            join employer in _dbContext.Employers.AsNoTracking()
-                on request.EmployerId equals employer.Id
-            join permission in _dbContext.Permissions.AsNoTracking()
-                on request.Id equals permission.RequestId
-            join workerInfo in _dbContext.WorkerInfos.AsNoTracking()
-                on permission.InfoId equals workerInfo.Id
+            join employer in _dbContext.Employers.AsNoTracking() on request.EmployerId equals employer.Id
+            join permission in _dbContext.Permissions.AsNoTracking() on request.Id equals permission.RequestId
+            join workerInfo in _dbContext.WorkerInfos.AsNoTracking() on permission.InfoId equals workerInfo.Id into wiGroup
+            from workerInfo in wiGroup.DefaultIfEmpty()
             where request.WorkerId == workerId
             orderby request.CreatedAt descending
             select new WorkerDashboardRequestDto
@@ -51,13 +46,14 @@ public class WorkerDashboardServiceImpl : IWorkerDashboardService
                 RequestId = request.Id,
                 EmployerId = request.EmployerId,
                 EmployerName = employer.Name,
-
-                RequestedInformation = workerInfo.Desc,
+                // Label: custom field label or preset field label
+                RequestedInformation = workerInfo == null
+                                        ? "Pending"
+                                        : (workerInfo.CustomLabel ?? workerInfo.Field!.Label),
                 CheckPurpose = request.Reason,
-
                 CreatedAt = request.CreatedAt,
-                Status = (int)permission.Status,
-                ExpiresAt = permission.ExpiryDate
+                Status = permission.Status,
+                ExpiresAt = request.ExpiryDate   // moved from permission to request
             }
         )
         .Take(5)
@@ -72,65 +68,36 @@ public class WorkerDashboardServiceImpl : IWorkerDashboardService
             {
                 var logs = await _blockchainService.GetWorkerLogsAsync(
                     worker.BlockchainAddress,
-                    cancellationToken
-                );
+                    cancellationToken);
 
-                // Match employer blockchain addresses from the blockchain logs with employer records in the database.
-                // This lets the dashboard show a company name instead of only a technical address.
-                var employerAddresses = logs
-                    .Select(log => log.EmployerAddress)
-                    .Where(address => !string.IsNullOrWhiteSpace(address))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
+                var employerAddresses = logs.Select(l => l.EmployerAddress).Distinct().ToList();
                 var employers = await _dbContext.Employers
                     .AsNoTracking()
-                    .Where(employer =>
-                        employer.BlockchainAddress != null &&
-                        employerAddresses.Contains(employer.BlockchainAddress))
+                    .Where(e => employerAddresses.Contains(e.BlockchainAddress))
                     .ToListAsync(cancellationToken);
 
-                var employerNameByAddress = employers
-                    .Where(employer => !string.IsNullOrWhiteSpace(employer.BlockchainAddress))
-                    .ToDictionary(
-                        employer => employer.BlockchainAddress!,
-                        employer => employer.Name,
-                        StringComparer.OrdinalIgnoreCase);
+                blockchainRecords = logs.Select(log =>
+                {
+                    var matchedEmployer = employers
+                        .FirstOrDefault(e => e.BlockchainAddress == log.EmployerAddress);
 
-                blockchainRecords = logs
-                    .OrderByDescending(log => log.Date)
-                    .Take(5)
-                    .Select(log =>
+                    return new BlockchainRecordDto
                     {
-                        var employerName = employerNameByAddress.TryGetValue(
-                            log.EmployerAddress,
-                            out var matchedEmployerName)
-                            ? matchedEmployerName
-                            : "Unknown company";
-
-                        return new BlockchainRecordDto
-                        {
-                            Action = log.Action,
-                            ActionLabel = GetActionLabel(log.Action),
-                            UserMessage = GetUserMessage(log.Action, employerName),
-                            EmployerName = employerName,
-                            EmployerAddress = log.EmployerAddress,
-                            WorkerAddress = log.WorkerAddress,
-                            TxHash = log.TxHash,
-                            Date = log.Date
-                        };
-                    })
-                    .ToList();
+                        Action = log.Action,
+                        ActionLabel = log.Action,
+                        UserMessage = $"Your data was {log.Action.ToLower()} by {matchedEmployer?.Name ?? log.EmployerAddress}",
+                        EmployerName = matchedEmployer?.Name ?? "Unknown",
+                        EmployerAddress = log.EmployerAddress,
+                        WorkerAddress = log.WorkerAddress,
+                        TxHash = log.TxHash,
+                        Date = log.Date
+                    };
+                }).ToList();
             }
             catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Blockchain unavailable for worker {WorkerId}", workerId);
                 blockchainAvailable = false;
-
-                _logger.LogWarning(
-                    ex,
-                    "Failed to load blockchain records for worker {WorkerId}",
-                    workerId
-                );
             }
         }
 
@@ -147,43 +114,6 @@ public class WorkerDashboardServiceImpl : IWorkerDashboardService
             LatestRequests = latestRequests,
             BlockchainRecords = blockchainRecords,
             BlockchainAvailable = blockchainAvailable
-        };
-    }
-
-    private static string GetActionLabel(string action)
-    {
-        return action switch
-        {
-            "PermissionRequested" => "Access Requested",
-            "PermissionApproved" => "Access Approved",
-            "PermissionRejected" => "Request Rejected",
-            "DataViewed" => "Data Viewed",
-            "PermissionRevoked" => "Access Revoked",
-            _ => "Access Record"
-        };
-    }
-
-    private static string GetUserMessage(string action, string employerName)
-    {
-        return action switch
-        {
-            "PermissionRequested" =>
-                $"{employerName} requested access to your information.",
-
-            "PermissionApproved" =>
-                $"You approved {employerName} to access your information.",
-
-            "PermissionRejected" =>
-                $"You rejected {employerName}'s request to access your information.",
-
-            "DataViewed" =>
-                $"{employerName} viewed information you had approved.",
-
-            "PermissionRevoked" =>
-                $"You removed {employerName}'s access to your information.",
-
-            _ =>
-                $"An access-related action involving {employerName} was recorded."
         };
     }
 }

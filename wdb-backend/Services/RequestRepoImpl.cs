@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Data;
@@ -15,32 +14,49 @@ public class RequestRepoImpl : IRequestRepository
         _dbContext = dbContext;
     }
 
-    public async Task<Request> AddAsync(Guid employerId, Guid workerId, string reason, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Create a new request. ExpiryDate defaults to 90 days from now;
+    /// callers can pass a custom value via the overload in Phase 2.
+    /// </summary>
+    public async Task<Request> AddAsync(
+        Guid employerId,
+        Guid workerId,
+        string reason,
+        CancellationToken cancellationToken = default)
     {
-        var request = new Request { EmployerId = employerId, WorkerId = workerId, Reason = reason };
+        var request = new Request
+        {
+            EmployerId = employerId,
+            WorkerId = workerId,
+            Reason = reason,
+            ExpiryDate = DateTime.UtcNow.AddDays(90)   // default; will be overridable in Phase 2
+        };
+
         _dbContext.Requests.Add(request);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return request;
     }
 
+    public Task<LinkedList<Request>> GetAllByEmployerIdAsync(
+        Guid employerId,
+        CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 
-    public Task<LinkedList<Request>> GetAllByEmployerIdAsync(Guid employerId, CancellationToken cancellationToken = default)
+    public async Task<List<Request>> GetAllByWorkerIdAsync(
+        Guid workerId,
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return await _dbContext.Requests
+            .Where(x => x.WorkerId == workerId)
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<Request>> GetAllByWorkerIdAsync(Guid workerId, CancellationToken cancellationToken = default)
+    public async Task<Request> GetByRequestIdAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _dbContext.Requests.Where(x => x.WorkerId == workerId).ToListAsync(cancellationToken);
-        return result;
+        return await _dbContext.Requests
+            .FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken)
+            ?? throw new KeyNotFoundException();
     }
-
-    public async Task<Request> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
-    {
-        var result = await _dbContext.Requests.FirstOrDefaultAsync(x => x.Id == requestId, cancellationToken) ?? throw new KeyNotFoundException();
-        return result;
-    }
-
-
-
 }

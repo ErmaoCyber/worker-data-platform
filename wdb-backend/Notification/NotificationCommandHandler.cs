@@ -3,9 +3,11 @@ using wdb_backend.DTOs;
 
 namespace wdb_backend.Notification;
 
+/// <summary>
+/// Translates a NotificationCommand into a published NotificationEvent.
+/// </summary>
 public class NotificationCommandHandler : IRequestHandler<NotificationCommand>
 {
-    // inject the IMediator instance for decoupling
     private readonly IMediator _mediator;
 
     public NotificationCommandHandler(IMediator mediator)
@@ -15,6 +17,14 @@ public class NotificationCommandHandler : IRequestHandler<NotificationCommand>
 
     public async Task Handle(NotificationCommand cmd, CancellationToken ct)
     {
-        await _mediator.Publish(new NotificationEvent(cmd.EmployerId, cmd.WorkerId, cmd.WorkerInfoId, cmd.Type, DateTime.UtcNow), ct);
+        await _mediator.Publish(
+            new NotificationEvent(
+                cmd.EmployerId,
+                cmd.WorkerId,
+                cmd.RequestId,
+                cmd.FieldLabel,
+                cmd.Type,
+                DateTime.UtcNow),
+            ct);
     }
 }

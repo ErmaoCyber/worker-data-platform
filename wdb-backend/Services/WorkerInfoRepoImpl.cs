@@ -2,14 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
 using wdb_backend.Data;
-using wdb_backend.Enums;
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
 
-
-
-// this class is define the implementation of worker info repository.
 public class WorkerInfoRepoImpl : IWorkerInfoRepository
 {
     private readonly AppDbContext _context;
@@ -19,102 +15,185 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         _context = context;
     }
 
-    public Task<WorkerInfo> GetOneAsync(Guid workerId, Guid wordInfoId, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
+    public Task<WorkerInfo> GetOneAsync(Guid workerId, Guid workerInfoId, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 
+    /// <summary>Return all worker_info rows for a worker, including Field + Category navigation.</summary>
     public async Task<List<WorkerInfo>> GetAllAsync(Guid workerId, CancellationToken cancellationToken = default)
     {
-        var workerInfoList = await _context.WorkerInfos.Where(w => w.WorkerId == workerId).ToListAsync(cancellationToken);
-        return workerInfoList;
+        return await _context.WorkerInfos
+            .Where(w => w.WorkerId == workerId)
+            .Include(w => w.Field)
+                .ThenInclude(f => f!.Category)
+            .ToListAsync(cancellationToken);
     }
 
-
-
-    // This method receive a workerid and return all the worker info related to paramenter workerid.
-    // the parameter workerid is the key in the database, cacellation token is to cancale the request if user pasue the request.
-    // the return type is a hashset.
     public async Task<HashSet<WorkerInfo>> GetAllAsyncHash(Guid workerId, CancellationToken cancellationToken = default)
     {
-        var workerInfos = await _context.WorkerInfos
-           .Where(w => w.WorkerId == workerId)
-           .ToListAsync<WorkerInfo>(cancellationToken);// use .tolistasync to transform data from database to list of workerinfo that match c# grammar.
-
-        return workerInfos.ToHashSet(); // transform list to hashset.
+        var list = await GetAllAsync(workerId, cancellationToken);
+        return list.ToHashSet();
     }
 
-
-
-    // this method is to add a worker info to database, worker info is the parameter that use want to add.
+    /// <summary>Insert a new worker_info row.</summary>
     public Task AddOneAsync(Guid workerId, WorkerInfo workerInfo, CancellationToken cancellationToken = default)
     {
-        workerInfo.WorkerId = workerId;// get the user input info.
-        _context.WorkerInfos.Add(workerInfo); // target the specific table in db and add passed info to the table.
-        return _context.SaveChangesAsync(cancellationToken);// implement the change in db and keep the change until request finished/cancelled.
+        workerInfo.WorkerId = workerId;
+        _context.WorkerInfos.Add(workerInfo);
+        return _context.SaveChangesAsync(cancellationToken);
     }
 
-
-
-    // this method is to make the user's update operation can be saved in db.
-    // the return type is worker info.
+    /// <summary>
+    /// Update an existing worker_info row matched by WorkerId + FieldId (preset)
+    /// or WorkerId + CustomLabel (custom). Only Value is updated for preset fields;
+    /// Label and Value can both be updated for custom fields.
+    /// </summary>
     public async Task<WorkerInfo> UpdateAsync(Guid workerId, WorkerInfo workerInfo, CancellationToken cancellationToken = default)
     {
-        // check if the record exist in db by workerid and desc, if exist then update the value,if not exist then add a new record in db.
-        var existing = await _context.WorkerInfos
-            .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.Desc == workerInfo.Desc, cancellationToken);
+        WorkerInfo? existing;
 
-        if (existing != null)
+        if (workerInfo.FieldId.HasValue)
         {
-            // if the record exist, then updat the vaule and save the change in db.
-            existing.Value = workerInfo.Value;
-            existing.Category = workerInfo.Category;
-            existing.UpdatedAt = DateTime.UtcNow; // update the updated time to current time.
-            await _context.SaveChangesAsync(cancellationToken);
-            return existing;
+            // Preset field — match by FieldId
+            existing = await _context.WorkerInfos
+                .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.FieldId == workerInfo.FieldId, cancellationToken);
         }
         else
         {
-            // if it is not exist, then add a new record
-            workerInfo.WorkerId = workerId;
-            workerInfo.Id = Guid.NewGuid();  // generate a new id for the new record
-            _context.WorkerInfos.Add(workerInfo);
-            await _context.SaveChangesAsync(cancellationToken);
-            return workerInfo;
+            // Custom field — match by Id directly
+            existing = await _context.WorkerInfos
+                .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.Id == workerInfo.Id, cancellationToken);
         }
+
+        if (existing != null)
+        {
+            existing.Value = workerInfo.Value;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            // For custom fields, label can also be updated
+            if (!workerInfo.FieldId.HasValue && workerInfo.CustomLabel != null)
+                existing.CustomLabel = workerInfo.CustomLabel;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        // Row does not exist yet — insert (preset field first fill)
+        workerInfo.WorkerId = workerId;
+        _context.WorkerInfos.Add(workerInfo);
+        await _context.SaveChangesAsync(cancellationToken);
+        return workerInfo;
     }
 
-    // this method is to delete the whole worker info in db. but ui have not define so this method have not done.
-    public Task<WorkerInfo> DeleteAsync(Guid workerId, Guid wordInfoId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Delete a custom worker_info row.
+    /// Returns the deleted row, or throws InvalidOperationException if
+    /// the row has an active (approved) permission.
+    /// </summary>
+    public async Task<WorkerInfo> DeleteAsync(Guid workerId, Guid workerInfoId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var existing = await _context.WorkerInfos
+            .Include(w => w.Permissions)
+            .FirstOrDefaultAsync(w => w.Id == workerInfoId && w.WorkerId == workerId, cancellationToken)
+            ?? throw new KeyNotFoundException();
+
+        // Block deletion if there is any active (approved) permission
+        var hasActive = existing.Permissions.Any(p => p.Status == PermissionStatus.Approved);
+        if (hasActive)
+            throw new InvalidOperationException("ACTIVE_PERMISSION_EXISTS");
+
+        _context.WorkerInfos.Remove(existing);
+        await _context.SaveChangesAsync(cancellationToken);
+        return existing;
     }
 
+    /// <summary>
+    /// Return all preset fields (from the fields table) merged with the worker's
+    /// existing worker_info rows. Fields with no worker_info row are included with Value=null.
+    /// Also includes all custom (Other) fields the worker has created.
+    /// Result is grouped by category for the profile page.
+    /// </summary>
+    public async Task<List<WorkerInfo>> GetAllWithPresetsAsync(Guid workerId, CancellationToken cancellationToken = default)
+    {
+        // All preset field definitions
+        var allFields = await _context.Fields
+            .Include(f => f.Category)
+            .ToListAsync(cancellationToken);
+
+        // Worker's existing rows (preset + custom)
+        var existing = await _context.WorkerInfos
+            .Where(w => w.WorkerId == workerId)
+            .Include(w => w.Field)
+                .ThenInclude(f => f!.Category)
+            .ToListAsync(cancellationToken);
+
+        var existingByFieldId = existing
+            .Where(w => w.FieldId.HasValue)
+            .ToDictionary(w => w.FieldId!.Value);
+
+        var result = new List<WorkerInfo>();
+
+        // For each preset field, use the existing row or create a placeholder
+        foreach (var field in allFields)
+        {
+            if (existingByFieldId.TryGetValue(field.Id, out var row))
+            {
+                result.Add(row);
+            }
+            else
+            {
+                // Placeholder — not yet filled
+                result.Add(new WorkerInfo
+                {
+                    Id = Guid.Empty,   // signals "not yet saved"
+                    WorkerId = workerId,
+                    FieldId = field.Id,
+                    Field = field,
+                    Type = field.AllowedType,
+                    Value = null,
+                    CustomLabel = null
+                });
+            }
+        }
+
+        // Append custom (Other) fields
+        var customFields = existing.Where(w => !w.FieldId.HasValue);
+        result.AddRange(customFields);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Return worker infos not yet requested by this employer.
+    /// Uses int status constants (PermissionStatus.Pending, .Approved).
+    /// </summary>
     public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
     {
         var availableInfos = await _context.WorkerInfos
-      .Include(w => w.Permissions).ThenInclude(p => p.Request)
-      .Where(w => w.WorkerId == workerId &&
-                  !w.Permissions.Any(p => p.Request.EmployerId == employerId &&
-                                          (p.Status == PermissionStatus.Pending ||
-                                           p.Status == PermissionStatus.Approved)))
-      .ToListAsync(cancellationToken);
+            .Include(w => w.Permissions).ThenInclude(p => p.Request)
+            .Include(w => w.Field).ThenInclude(f => f!.Category)
+            .Where(w => w.WorkerId == workerId &&
+                        !w.Permissions.Any(p =>
+                            p.Request.EmployerId == employerId &&
+                            (p.Status == PermissionStatus.Pending ||
+                             p.Status == PermissionStatus.Approved)))
+            .ToListAsync(cancellationToken);
 
         return availableInfos;
     }
 
-
+    /// <summary>Return worker infos already requested by this employer.</summary>
     public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
     {
         var requestedInfos = await _context.WorkerInfos
             .Include(w => w.Permissions).ThenInclude(p => p.Request)
+            .Include(w => w.Field).ThenInclude(f => f!.Category)
             .Where(w => w.WorkerId == workerId &&
-                        w.Permissions.Any(p => p.Request.EmployerId == employerId &&
-                                               (p.Status == PermissionStatus.Pending ||
-                                                p.Status == PermissionStatus.Approved)))
+                        w.Permissions.Any(p =>
+                            p.Request.EmployerId == employerId &&
+                            (p.Status == PermissionStatus.Pending ||
+                             p.Status == PermissionStatus.Approved)))
             .ToListAsync(cancellationToken);
 
         return requestedInfos;
     }
-
 }

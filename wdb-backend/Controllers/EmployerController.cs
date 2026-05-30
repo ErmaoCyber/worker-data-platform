@@ -1,11 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using wdb_backend.Abstractions;
 using wdb_backend.DTOs;
 using wdb_backend.Models;
-using wdb_backend.Services;
 using System.Security.Claims;
 using wdb_backend.Usecases;
 
@@ -18,11 +16,13 @@ public class EmployerController : ControllerBase
     private readonly ICreateDataAccessRequestUsecase _createDataAccessUsecase;
     private readonly IFindWorkerInfosByEmailUsecase _findWorkerInfosUsecase;
     private readonly IWorkerService _workerService;
-
     private readonly IAddFlexibleWorkerInfoUsecase _addFlexibleWorkerInfoUsecase;
 
-    public EmployerController(ICreateDataAccessRequestUsecase createDataAccessUsecase,
-        IFindWorkerInfosByEmailUsecase findWorkerInfosUsecase, IWorkerService workerService, IAddFlexibleWorkerInfoUsecase addFlexibleWorkerInfoUsecase)
+    public EmployerController(
+        ICreateDataAccessRequestUsecase createDataAccessUsecase,
+        IFindWorkerInfosByEmailUsecase findWorkerInfosUsecase,
+        IWorkerService workerService,
+        IAddFlexibleWorkerInfoUsecase addFlexibleWorkerInfoUsecase)
     {
         _createDataAccessUsecase = createDataAccessUsecase;
         _findWorkerInfosUsecase = findWorkerInfosUsecase;
@@ -30,11 +30,7 @@ public class EmployerController : ControllerBase
         _addFlexibleWorkerInfoUsecase = addFlexibleWorkerInfoUsecase;
     }
 
-    /// <summary>
-    /// Get the worker by Email.
-    /// </summary>
-    /// <param name="email">The worker's email address.</param>
-    /// <returns>200 OK with list of worker info, or 4404 Notfound if worker not found</returns>
+    /// <summary>Get a worker by email address.</summary>
     [HttpGet("GetWorkerByEmail")]
     public async Task<ActionResult<Worker>> GetWorkerByEmail(string email)
     {
@@ -49,36 +45,31 @@ public class EmployerController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get all of the worker's information by Email.
-    /// </summary>
-    /// <param name="email">The worker's email address.</param>
-    /// <returns>200 OK with list of worker info, or 4404 Notfound if worker not found</returns>
+    /// <summary>Get all worker info fields visible to the current employer for a given worker email.</summary>
     [HttpGet]
     public async Task<ActionResult<List<WorkerInfoDto>>> GetWorkerInfosByEmail(string email)
     {
         var employerIdClaim = User.FindFirst("sub")?.Value
                               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (employerIdClaim == null)
-            return Unauthorized();
+        if (employerIdClaim == null) return Unauthorized();
 
         var employerId = Guid.Parse(employerIdClaim);
+
         try
         {
             var workerInfos = await _findWorkerInfosUsecase.FindWorkerInfosByEmail(email, employerId);
-            if (workerInfos.Count == 0)
-            {
-                return Ok(new List<WorkerInfoDto>());
-            }
+            if (workerInfos.Count == 0) return Ok(new List<WorkerInfoDto>());
 
-            var result = workerInfos.Select(w => new WorkerInfoDto()
+            var result = workerInfos.Select(w => new WorkerInfoDto
             {
                 Id = w.Id,
-                Desc = w.Desc,
-                Status = "",
-                Category = w.Category?.ToString() ?? "Unknown"
+                // Label: custom field label or preset field label
+                Label = w.CustomLabel ?? w.Field?.Label ?? "Unknown",
+                Category = w.Field?.Category?.CategoryName ?? "OtherInformation",
+                Status = string.Empty
             }).ToList();
+
             return Ok(result);
         }
         catch (KeyNotFoundException)
@@ -87,37 +78,30 @@ public class EmployerController : ControllerBase
         }
     }
 
-
-    /// <summary>
-    /// Get all of the worker's information by Email.
-    /// </summary>
-    /// <param name="email">The worker's email address.</param>
-    /// <returns>200 OK with list of worker info, or 4404 Notfound if worker not found</returns>
+    /// <summary>Get worker info fields that have already been requested by the current employer.</summary>
     [HttpGet("GetRequestedWorkerInfosByEmail")]
     public async Task<ActionResult<List<WorkerInfoDto>>> GetRequestedWorkerInfosByEmail(string email)
     {
         var employerIdClaim = User.FindFirst("sub")?.Value
                               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (employerIdClaim == null)
-            return Unauthorized();
+        if (employerIdClaim == null) return Unauthorized();
 
         var employerId = Guid.Parse(employerIdClaim);
+
         try
         {
             var workerInfos = await _findWorkerInfosUsecase.FindRequestedWorkerInfosByEmail(email, employerId);
-            if (workerInfos.Count == 0)
-            {
-                return Ok(new List<WorkerInfoDto>());
-            }
+            if (workerInfos.Count == 0) return Ok(new List<WorkerInfoDto>());
 
-            var result = workerInfos.Select(w => new WorkerInfoDto()
+            var result = workerInfos.Select(w => new WorkerInfoDto
             {
                 Id = w.Id,
-                Desc = w.Desc,
-                Category = w.Category?.ToString() ?? "Unknown",
+                Label = w.CustomLabel ?? w.Field?.Label ?? "Unknown",
+                Category = w.Field?.Category?.CategoryName ?? "OtherInformation",
                 Status = w.Permissions.FirstOrDefault()?.Status.ToString() ?? "Unknown"
             }).ToList();
+
             return Ok(result);
         }
         catch (KeyNotFoundException)
@@ -126,65 +110,46 @@ public class EmployerController : ControllerBase
         }
     }
 
-
-    /// <summary>
-    /// Creates a data access request for selected worker information.
-    /// </summary>
-    /// <returns>200 OK if successful, 404 if worker not found.</returns>
+    /// <summary>Create a data access request for selected worker info fields.</summary>
     [Authorize]
     [HttpPost("AccessRequests")]
     public async Task<ActionResult> CreateRequest([FromBody] CreateRequestUsecaseDTO request)
     {
-        // get employer id from the user's token
-        // var employerIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        // Console.WriteLine("Print:"+employerIdClaim);
         var employerIdClaim = User.FindFirst("sub")?.Value
                               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        Console.WriteLine("Print:" + employerIdClaim);
-        if (employerIdClaim == null)
-        {
-            return Unauthorized();
-        }
+
+        if (employerIdClaim == null) return Unauthorized();
 
         var employerId = Guid.Parse(employerIdClaim);
 
         var allWorkerInfos = await _findWorkerInfosUsecase.FindWorkerInfosByEmail(request.Email, employerId);
-        if (allWorkerInfos == null || allWorkerInfos.Count == 0)
-        {
-            return NotFound();
-        }
+        if (allWorkerInfos == null || allWorkerInfos.Count == 0) return NotFound();
 
-        var selectedInfos = allWorkerInfos.Where(w => request.InfoDesc.Contains(w.Id.ToString()))
+        var selectedInfos = allWorkerInfos
+            .Where(w => request.InfoDesc.Contains(w.Id.ToString()))
             .ToList();
-        var worker_id = allWorkerInfos[0].WorkerId;
-        await _createDataAccessUsecase.CreateDataAccessRequest(selectedInfos, employerId, worker_id, request.Reason);
+
+        var workerId = allWorkerInfos[0].WorkerId;
+        await _createDataAccessUsecase.CreateDataAccessRequest(selectedInfos, employerId, workerId, request.Reason);
         return Ok();
     }
 
-
-
-    /// <summary>    
-    /// Adds flexible worker information for a specific worker.
-    /// </summary>
-    /// <param name="request">The request containing worker email, category, description, and employer ID.</param>
-    /// <returns>200 OK if successful, 404 if worker not found.</returns>
+    /// <summary>Request a worker to add a new custom field.</summary>
     [Authorize]
     [HttpPost("AddFlexibleWorkerInfo")]
     public async Task<ActionResult> AddFlexibleWorkerInfo([FromBody] AddFlexibleRequestDto request)
-    {            // get employer id from the user's token
+    {
         var employerIdClaim = User.FindFirst("sub")?.Value
                               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (employerIdClaim == null)
-        {
-            return Unauthorized();
-        }
+        if (employerIdClaim == null) return Unauthorized();
 
         var employerId = Guid.Parse(employerIdClaim);
 
         try
         {
-            await _addFlexibleWorkerInfoUsecase.ExecuteAsync(request.WorkerEmail, request.Category, request.Desc, request.Reason, employerId);
+            await _addFlexibleWorkerInfoUsecase.ExecuteAsync(
+                request.WorkerEmail, request.Category, request.Desc, request.Reason, employerId);
             return Ok();
         }
         catch (KeyNotFoundException)
@@ -192,5 +157,4 @@ public class EmployerController : ControllerBase
             return NotFound($"Worker {request.WorkerEmail} not found");
         }
     }
-
 }
