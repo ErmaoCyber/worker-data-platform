@@ -49,6 +49,44 @@ public class EmployerActiveAccessController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// View the value of a single approved permission.
+    /// Text values are returned inline; file values are returned as a short-lived
+    /// Supabase signed URL the client can use to render the file directly.
+    /// </summary>
+    [Authorize]
+    [HttpGet("{permissionId}/view")]
+    public async Task<ActionResult<EmployerAccessViewResultDto>> View(
+        Guid permissionId,
+        CancellationToken cancellationToken)
+    {
+        var employerId = GetCurrentEmployerId();
+        if (employerId == null) return Unauthorized();
+
+        try
+        {
+            var result = await _employerActiveAccessService.ViewAsync(
+                employerId.Value, permissionId, cancellationToken);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "PERMISSION_NOT_FOUND" });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Supabase storage configuration"))
+        {
+            return StatusCode(503, new { error = "STORAGE_UNAVAILABLE", message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnprocessableEntity(new { error = "INVALID_STATE", message = ex.Message });
+        }
+    }
+
     private Guid? GetCurrentEmployerId()
     {
         var employerIdClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)

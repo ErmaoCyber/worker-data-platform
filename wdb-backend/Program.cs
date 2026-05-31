@@ -72,6 +72,9 @@ builder.Services.AddScoped<IEmployerDashboardService, EmployerDashboardServiceIm
 // Blockchain service
 builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
 
+// Supabase storage (signed URL generation for private file objects)
+builder.Services.AddHttpClient<ISupabaseStorageService, SupabaseStorageService>();
+
 // DbContext
 builder.Services.AddDbContextPool<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
