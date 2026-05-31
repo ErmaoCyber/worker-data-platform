@@ -1,6 +1,6 @@
 'use client';
 import type { EmployerDashboardData } from '@/lib/employerDashboardApi';
-import RequestModal from '../requests/RequestModel';
+import RequestModal from '../requests/RequestModal';
 import { useState } from 'react';
 
 type EmployerDashboardViewProps = {
