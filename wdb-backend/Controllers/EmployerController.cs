@@ -75,9 +75,12 @@ public class EmployerController : ControllerBase
             var result = workerInfos.Select(w => new WorkerInfoDto()
             {
                 Id = w.Id,
-                Desc = w.Desc,
+                // TODO: Desc removed; resolve via Field.Label after refactor.
+                // Desc = w.Desc,
+                Desc = "TODO",
                 Status = "",
-                Category = w.Category?.ToString() ?? "Unknown"
+                // Category = w.Category?.ToString() ?? "Unknown"
+                Category = "Unknown"
             }).ToList();
             return Ok(result);
         }
@@ -114,8 +117,11 @@ public class EmployerController : ControllerBase
             var result = workerInfos.Select(w => new WorkerInfoDto()
             {
                 Id = w.Id,
-                Desc = w.Desc,
-                Category = w.Category?.ToString() ?? "Unknown",
+                // TODO: Desc removed; resolve via Field.Label after refactor.
+                // Desc = w.Desc,
+                Desc = "TODO",
+                // Category = w.Category?.ToString() ?? "Unknown",
+                Category = "Unknown",
                 Status = w.Permissions.FirstOrDefault()?.Status.ToString() ?? "Unknown"
             }).ToList();
             return Ok(result);

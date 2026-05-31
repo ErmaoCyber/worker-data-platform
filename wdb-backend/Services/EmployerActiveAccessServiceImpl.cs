@@ -40,7 +40,8 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
                 on permission.InfoId equals workerInfo.Id
             where request.EmployerId == employerId
                   && permission.Status == PermissionStatus.Approved
-                  && (!permission.ExpiryDate.HasValue || permission.ExpiryDate.Value > now)
+                  // && (!permission.ExpiryDate.HasValue || permission.ExpiryDate.Value > now)  // ExpiryDate moved to request
+                  && request.ExpiryDate > now
             select new ActiveAccessRow
             {
                 RequestId = request.Id,
@@ -49,10 +50,13 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
                 WorkerEmail = worker.Email,
                 Reason = request.Reason,
                 PermissionId = permission.Id,
-                DataType = workerInfo.Desc,
+                // TODO: Desc removed; resolve via Field.Label after refactor.
+                // DataType = workerInfo.Desc,
+                DataType = "TODO",
                 Value = workerInfo.Value,
                 GrantedAt = permission.LastUpdatedAt,
-                ExpiryDate = permission.ExpiryDate
+                // ExpiryDate = permission.ExpiryDate  // ExpiryDate moved to request
+                ExpiryDate = request.ExpiryDate
             }
         ).ToListAsync(cancellationToken);
 

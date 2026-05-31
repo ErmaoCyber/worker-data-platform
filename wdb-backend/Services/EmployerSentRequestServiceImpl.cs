@@ -45,9 +45,12 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
                 WorkerEmail = worker.Email,
                 Reason = request.Reason,
                 RequestedAt = request.CreatedAt,
-                DataType = workerInfo.Desc,
+                // TODO: Desc removed; resolve via Field.Label after refactor.
+                // DataType = workerInfo.Desc,
+                DataType = "TODO",
                 PermissionStatus = permission.Status,
-                ExpiryDate = permission.ExpiryDate,
+                // ExpiryDate = permission.ExpiryDate,  // ExpiryDate moved from permission to request in new schema
+                ExpiryDate = request.ExpiryDate,
                 LastUpdatedAt = permission.LastUpdatedAt
             }
         ).ToListAsync(cancellationToken);
@@ -133,7 +136,7 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
 
         public string DataType { get; set; } = string.Empty;
 
-        public PermissionStatus PermissionStatus { get; set; }
+        public int PermissionStatus { get; set; }  // PermissionStatus is now a static class; column stored as int
 
         public DateTime? ExpiryDate { get; set; }
 

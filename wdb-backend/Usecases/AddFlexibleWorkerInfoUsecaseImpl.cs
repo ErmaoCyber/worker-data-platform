@@ -26,6 +26,9 @@ public class AddFlexibleWorkerInfoUsecaseImpl : IAddFlexibleWorkerInfoUsecase
     // The employer can specify the category and description of the information they want the worker to add. The system will create a new worker info entry with an empty value and send a request to the worker to fill in the information.
     public async Task ExecuteAsync(string workerEmail, string category, string desc, string reason, Guid employerId, CancellationToken cancellationToken = default)
     {
+        // TODO: Re-implement using new schema (custom_label workflow in worker_info)
+        // pending the custom_request feature design.
+        /*
         var worker = await _workerService.GetByEmailAsync(workerEmail);
         var workerInfo = new WorkerInfo
         {
@@ -36,5 +39,7 @@ public class AddFlexibleWorkerInfoUsecaseImpl : IAddFlexibleWorkerInfoUsecase
         };
         await _workerInfoService.CreateAsync(worker.Id, workerInfo);
         await _requestService.CreateAsync(employerId, worker.Id, reason, cancellationToken);
+        */
+        await Task.CompletedTask;
     }
 }
