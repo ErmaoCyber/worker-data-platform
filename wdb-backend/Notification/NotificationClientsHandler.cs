@@ -19,6 +19,11 @@ public class NotificationClientsHandler : INotificationHandler<NotificationEvent
 
     public async Task Handle(NotificationEvent e, CancellationToken ct)
     {
+        // TODO: re-implement persistence after notification subsystem refactor.
+        // Old code wrote with the previous Notification shape
+        // (EmployerId/WorkerId/WorkerInfoId/CreateAt). New model uses
+        // RecipientWorkerId / RecipientEmployerId / RequestId / CreatedAt.
+        /*
         // save the notification info to the database before notify (the field - is_read is default false)
         await _notificationRepo.AddAsync(new Models.Notification
         {
@@ -29,6 +34,7 @@ public class NotificationClientsHandler : INotificationHandler<NotificationEvent
             CreateAt = e.CreateAt,
             IsRead = false
         }, ct);
+        */
 
         // format the notification
         var format = await _notificationRepo.FormatNotification(e, ct);

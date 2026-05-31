@@ -29,14 +29,14 @@ public class NotificationController : ControllerBase
     public async Task<IActionResult> AccessInfo([FromBody] NotificationInfo notiInfo, CancellationToken ct)
     {
         // send the command to handler
-        await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, NotificationType.Access), ct);
+        await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, LegacyNotificationType.Access), ct);
         return Ok(new { message = "already notified" });
     }
 
     [HttpPost("request")]
     public async Task<IActionResult> RequestInfo([FromBody] NotificationInfo notiInfo, CancellationToken ct)
     {
-        await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, NotificationType.Request), ct);
+        await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, LegacyNotificationType.Request), ct);
         return Ok(new { message = "already notified" });
     }
 

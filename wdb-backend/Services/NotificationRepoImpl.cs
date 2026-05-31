@@ -34,17 +34,26 @@ public class NotificationRepoImpl : INotificationRepository
 
     public async Task<List<Models.Notification>> GetAllByWorkerIdAsync(Guid workerId, CancellationToken ct = default)
     {
-        return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId).ToListAsync(ct);
+        // TODO: Adapt to new Notification shape (RecipientWorkerId). Pending full notification refactor.
+        // return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId).ToListAsync(ct);
+        await Task.CompletedTask;
+        return new List<Models.Notification>();
     }
 
     public async Task<List<Models.Notification>> GetAllUnreadByWorkerIdAsync(Guid workerId, CancellationToken ct = default)
     {
-        return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId && notification.IsRead == false).ToListAsync(ct);
+        // TODO: Adapt to new Notification shape (RecipientWorkerId). Pending full notification refactor.
+        // return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId && notification.IsRead == false).ToListAsync(ct);
+        await Task.CompletedTask;
+        return new List<Models.Notification>();
     }
 
     public async Task<List<Models.Notification>> GetAllReadByWorkerIdAsync(Guid workerId, CancellationToken ct = default)
     {
-        return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId && notification.IsRead == true).ToListAsync(ct);
+        // TODO: Adapt to new Notification shape (RecipientWorkerId). Pending full notification refactor.
+        // return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId && notification.IsRead == true).ToListAsync(ct);
+        await Task.CompletedTask;
+        return new List<Models.Notification>();
     }
 
     public async Task<Models.Notification?> GetByIdAsync(Guid notificationId, CancellationToken ct)
@@ -57,7 +66,9 @@ public class NotificationRepoImpl : INotificationRepository
     {
         var employerName = (await _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == e.EmployerId, ct))?.Name;
         var workerName = (await _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == e.WorkerId, ct))?.Name;
-        var workerInfoDesc = (await _dbContext.WorkerInfos.FirstOrDefaultAsync(workerInfo => workerInfo.Id == e.WorkerInfoId, ct))?.Desc;
+        // TODO: Reinstate worker_info description lookup via Field.Label after notification refactor.
+        // var workerInfoDesc = (await _dbContext.WorkerInfos.FirstOrDefaultAsync(workerInfo => workerInfo.Id == e.WorkerInfoId, ct))?.Desc;
+        string? workerInfoDesc = null;
         return new NotificationFormat
         (
             employerName,
@@ -70,6 +81,8 @@ public class NotificationRepoImpl : INotificationRepository
 
     public async Task<NotificationFormatComponent> FormatNotificationPipeline(Models.Notification n, CancellationToken ct)
     {
+        // TODO: Adapt to new Notification shape (RecipientWorkerId / RecipientEmployerId / RequestId / CreatedAt).
+        /*
         var employerName = (await _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == n.EmployerId, ct))?.Name;
         var workerName = (await _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == n.WorkerId, ct))?.Name;
         var workerInfoDesc = (await _dbContext.WorkerInfos.FirstOrDefaultAsync(workerInfo => workerInfo.Id == n.WorkerInfoId, ct))?.Desc;
@@ -82,11 +95,16 @@ public class NotificationRepoImpl : INotificationRepository
             workerInfoDesc,
             n.CreateAt
         );
+        */
+        await Task.CompletedTask;
+        return new NotificationFormatComponent(n.Id, null, null, n.Type, null, n.CreatedAt);
     }
 
     public async Task<IList<NotificationFormatComponent>> GetFormattedNotificationsAsync(
         Guid workerId, bool? isRead, CancellationToken ct)
     {
+        // TODO: Adapt LINQ query to new Notification model after refactor.
+        /*
         var rows = await (
             from n in _dbContext.Notifications
             where n.WorkerId == workerId && (!isRead.HasValue || n.IsRead == isRead.Value)
@@ -113,5 +131,8 @@ public class NotificationRepoImpl : INotificationRepository
             r.WorkerInfoDesc,
             r.CreateAt
         )).ToList();
+        */
+        await Task.CompletedTask;
+        return new List<NotificationFormatComponent>();
     }
 }
