@@ -2,24 +2,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FetchApi } from '@/lib/api';
-
-type EmployerActiveAccess = {
-  requestId: string;
-  workerId: string;
-  workerName: string;
-  workerEmail: string;
-  reason: string;
-  grantedAt: string;
-  expiryDate: string | null;
-  workerInfo: {
-    permissionId: string;
-    dataType: string;
-    value: string;
-  }[];
-};
+import {
+  fetchActiveAccess,
+  type EmployerActiveAccess,
+} from '@/lib/api/employerActiveAccessApi';
+import AccessViewModal from './AccessViewModal';
 
 const PAGE_SIZE = 6;
+
+interface ViewTarget {
+  permissionId: string;
+  label: string;
+  type: 'text' | 'file';
+}
 
 export default function MyAccessTab() {
   const router = useRouter();
@@ -29,11 +24,14 @@ export default function MyAccessTab() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const [searchText, setSearchText] = useState('');
-  const [selectedDataType, setSelectedDataType] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewTarget, setViewTarget] = useState<ViewTarget | null>(null);
+
+  // The dataType filter was removed: items are now grouped by category in the
+  // API response, so a flat "filter by data type" no longer maps cleanly.
 
   useEffect(() => {
-    async function loadActiveAccess() {
+    async function load() {
       const token = localStorage.getItem('accessToken');
       const role = localStorage.getItem('role');
 
@@ -46,16 +44,7 @@ export default function MyAccessTab() {
       setErrorMsg('');
 
       try {
-        const data: EmployerActiveAccess[] = await FetchApi(
-          '/api/Employer/active-access',
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
+        const data = await fetchActiveAccess(token);
         setAccessList(data);
       } catch {
         setErrorMsg('Failed to load active access.');
@@ -63,56 +52,31 @@ export default function MyAccessTab() {
         setIsLoading(false);
       }
     }
-
-    loadActiveAccess();
+    load();
   }, [router]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchText, selectedDataType]);
-
-  const dataTypes = useMemo(() => {
-    const allTypes = accessList.flatMap((access) =>
-      access.workerInfo.map((info) => info.dataType)
-    );
-
-    return ['All', ...Array.from(new Set(allTypes))];
-  }, [accessList]);
+  }, [searchText]);
 
   const filteredAccessList = useMemo(() => {
-    return accessList.filter((access) => {
-      const search = searchText.toLowerCase();
+    const search = searchText.trim().toLowerCase();
+    if (!search) return accessList;
+    return accessList.filter(
+      (a) =>
+        a.workerName.toLowerCase().includes(search) ||
+        a.workerEmail.toLowerCase().includes(search),
+    );
+  }, [accessList, searchText]);
 
-      const matchesWorker =
-        access.workerName.toLowerCase().includes(search) ||
-        access.workerEmail.toLowerCase().includes(search);
-
-      const matchesDataType =
-        selectedDataType === 'All' ||
-        access.workerInfo.some((info) => info.dataType === selectedDataType);
-
-      return matchesWorker && matchesDataType;
-    });
-  }, [accessList, searchText, selectedDataType]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredAccessList.length / PAGE_SIZE)
-  );
-
+  const totalPages = Math.max(1, Math.ceil(filteredAccessList.length / PAGE_SIZE));
   const paginatedAccessList = filteredAccessList.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
 
-  if (isLoading) {
-    return <p className="text-sm text-gray-500">Loading active access...</p>;
-  }
-
-  if (errorMsg) {
-    return <p className="text-sm text-red-500">{errorMsg}</p>;
-  }
-
+  if (isLoading) return <p className="text-sm text-gray-500">Loading active access...</p>;
+  if (errorMsg) return <p className="text-sm text-red-500">{errorMsg}</p>;
   if (accessList.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
@@ -124,111 +88,97 @@ export default function MyAccessTab() {
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          My Access
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900">My Access</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Worker data your company is currently approved to access.
+          Worker data your company is currently approved to access. Click View to fetch and display the value.
         </p>
       </div>
 
       <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Search worker
-            </label>
-            <input
-              type="text"
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder="Search by name or email"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Data type
-            </label>
-            <select
-              value={selectedDataType}
-              onChange={(event) => setSelectedDataType(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-gray-900 focus:outline-none"
-            >
-              {dataTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type === 'All' ? 'All data types' : type}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          Search worker
+        </label>
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Search by name or email"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+        />
       </div>
 
       {filteredAccessList.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          No active access matches your filter.
-        </p>
+        <p className="text-sm text-gray-500">No active access matches your filter.</p>
       ) : (
         <>
-          <div className="rounded-xl border border-gray-200 bg-white">
-            <div className="divide-y divide-gray-200">
-              {paginatedAccessList.map((access) => (
-                <div
-                  key={access.requestId}
-                  className="grid gap-4 p-4 md:grid-cols-[1.2fr_1.5fr_1.5fr_8rem_8rem]"
-                >
+          <div className="space-y-3">
+            {paginatedAccessList.map((a) => (
+              <div
+                key={a.requestId}
+                className="rounded-xl border border-gray-200 bg-white p-4 space-y-4"
+              >
+                <div className="grid gap-3 md:grid-cols-[1.5fr_2fr_8rem_8rem]">
                   <div>
                     <p className="text-sm text-gray-500">Worker</p>
-                    <p className="mt-1 font-medium text-gray-900">
-                      {access.workerName}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {access.workerEmail}
-                    </p>
+                    <p className="mt-1 font-medium text-gray-900">{a.workerName}</p>
+                    <p className="mt-1 text-xs text-gray-500">{a.workerEmail}</p>
                   </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500">Approved Data</p>
-                    <div className="mt-1 space-y-1">
-                      {access.workerInfo.map((info) => (
-                        <p
-                          key={info.permissionId}
-                          className="text-sm text-gray-700"
-                        >
-                          <span className="font-medium">{info.dataType}:</span>{' '}
-                          {info.value}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-
                   <div>
                     <p className="text-sm text-gray-500">Reason</p>
-                    <p className="mt-1 text-sm text-gray-700">
-                      {access.reason}
-                    </p>
+                    <p className="mt-1 text-sm text-gray-700">{a.reason}</p>
                   </div>
-
                   <div>
                     <p className="text-sm text-gray-500">Granted</p>
                     <p className="mt-1 text-sm text-gray-600">
-                      {new Date(access.grantedAt).toLocaleDateString()}
+                      {new Date(a.grantedAt).toLocaleDateString()}
                     </p>
                   </div>
-
                   <div className="md:text-right">
-                    <p className="text-sm text-gray-500">Expiry</p>
+                    <p className="text-sm text-gray-500">Expires</p>
                     <p className="mt-1 text-sm text-gray-600">
-                      {access.expiryDate
-                        ? new Date(access.expiryDate).toLocaleDateString()
-                        : 'No expiry'}
+                      {new Date(a.expiryDate).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {a.categories.map((cat) => (
+                  <div key={cat.name}>
+                    <p className="text-sm font-semibold text-slate-800 mb-2">{cat.name}</p>
+                    <div className="space-y-1.5">
+                      {cat.items.map((item) => (
+                        <div
+                          key={item.permissionId}
+                          className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"
+                        >
+                          <span className="text-sm text-slate-700">
+                            {item.label}
+                            {item.type === 'file' && (
+                              <span className="ml-1 text-xs text-slate-400">(file)</span>
+                            )}
+                            {item.isCustom && (
+                              <span className="ml-1 text-xs text-slate-400">(custom)</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setViewTarget({
+                                permissionId: item.permissionId,
+                                label: item.label,
+                                type: item.type,
+                              })
+                            }
+                            className="rounded-md bg-slate-800 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700"
+                          >
+                            View
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -240,25 +190,22 @@ export default function MyAccessTab() {
               {filteredAccessList.length}
               {' access records'}
             </p>
-
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={currentPage === 1}
-                onClick={() => setCurrentPage((page) => page - 1)}
+                onClick={() => setCurrentPage((p) => p - 1)}
                 className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
-
               <span className="text-sm text-gray-600">
                 Page {currentPage} of {totalPages}
               </span>
-
               <button
                 type="button"
                 disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((page) => page + 1)}
+                onClick={() => setCurrentPage((p) => p + 1)}
                 className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
@@ -266,6 +213,15 @@ export default function MyAccessTab() {
             </div>
           </div>
         </>
+      )}
+
+      {viewTarget && (
+        <AccessViewModal
+          permissionId={viewTarget.permissionId}
+          itemLabel={viewTarget.label}
+          itemType={viewTarget.type}
+          onClose={() => setViewTarget(null)}
+        />
       )}
     </div>
   );
