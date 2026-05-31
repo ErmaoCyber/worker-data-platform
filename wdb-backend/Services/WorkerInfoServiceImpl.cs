@@ -1,5 +1,5 @@
 using wdb_backend.Abstractions;
-using wdb_backend.Enums;
+// using wdb_backend.Enums;  // removed: WorkerInfoCategory enum deleted in new schema
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
@@ -108,6 +108,9 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
 
     public Dictionary<string, List<string>> GetCategoryFields()
     {
+        // TODO: Re-implement by reading categories/fields tables from the database.
+        // Old hardcoded mapping kept below for reference until the new endpoint is wired up.
+        /*
         return new Dictionary<string, List<string>>()
         {
             [WorkerInfoCategory.PersonaInformation.ToString()] = new List<string>
@@ -125,7 +128,8 @@ public class WorkerInfoServiceImpl : IWorkerInfoService
             "work location", "duration"
         },
         };
-
+        */
+        return new Dictionary<string, List<string>>();
     }
 
 }

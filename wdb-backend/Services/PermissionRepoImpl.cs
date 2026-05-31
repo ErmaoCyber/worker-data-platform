@@ -37,7 +37,7 @@ public class PermissionRepoImpl : IPermissionRepository
 
         item.Status = permission.Status;
         item.LastUpdatedAt = permission.LastUpdatedAt;
-        item.ExpiryDate = permission.ExpiryDate;
+        // item.ExpiryDate = permission.ExpiryDate;  // ExpiryDate moved from permission to request in new schema
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

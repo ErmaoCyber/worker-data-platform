@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
 using wdb_backend.Data;
-using wdb_backend.Enums;
+// using wdb_backend.Enums;  // removed: WorkerInfoCategory enum deleted in new schema
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
@@ -61,14 +61,18 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
     public async Task<WorkerInfo> UpdateAsync(Guid workerId, WorkerInfo workerInfo, CancellationToken cancellationToken = default)
     {
         // check if the record exist in db by workerid and desc, if exist then update the value,if not exist then add a new record in db.
+        // Old: matched by free-text Desc; new schema uses FieldId. Only handles preset fields here;
+        // custom_label rows will be handled by the proper update flow built later.
+        // var existing = await _context.WorkerInfos
+        //     .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.Desc == workerInfo.Desc, cancellationToken);
         var existing = await _context.WorkerInfos
-            .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.Desc == workerInfo.Desc, cancellationToken);
+            .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.FieldId == workerInfo.FieldId, cancellationToken);
 
         if (existing != null)
         {
             // if the record exist, then updat the vaule and save the change in db.
             existing.Value = workerInfo.Value;
-            existing.Category = workerInfo.Category;
+            // existing.Category = workerInfo.Category;  // Category removed from WorkerInfo; derived via Field.Category
             existing.UpdatedAt = DateTime.UtcNow; // update the updated time to current time.
             await _context.SaveChangesAsync(cancellationToken);
             return existing;

@@ -41,9 +41,10 @@ public class PermissionServiceImpl : IPermissionService
             throw new InvalidOperationException($"Permission {permissionId} cannot be udpated as it is no longer pending");
         }
 
-        permission.Status = (PermissionStatus)status;
+        // permission.Status = (PermissionStatus)status;  // cast removed: PermissionStatus is now a static class of int constants
+        permission.Status = status;
         permission.LastUpdatedAt = DateTime.UtcNow;
-        permission.ExpiryDate = expiryDate;
+        // permission.ExpiryDate = expiryDate;  // ExpiryDate moved to request; expiry update belongs on request now
         var result = await _permissionRepository.UpdateAsync(permissionId, permission, cancellationToken);
         return result;
     }
@@ -75,7 +76,8 @@ public class PermissionServiceImpl : IPermissionService
         var result = await _permissionRepository.GetAllByWorkerIdAsync(workerId, cancellationToken) ?? throw new KeyNotFoundException();
         if (Status != -1)
         {
-            result = result.Where(x => x.Status == (PermissionStatus)Status).ToList();
+            // result = result.Where(x => x.Status == (PermissionStatus)Status).ToList();  // cast removed
+            result = result.Where(x => x.Status == Status).ToList();
         }
 
         return result;
