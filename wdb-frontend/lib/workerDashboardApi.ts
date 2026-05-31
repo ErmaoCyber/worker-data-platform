@@ -1,8 +1,15 @@
 export interface WorkerDashboardResponse {
   worker: WorkerBasicInfo;
+  summary: WorkerDashboardSummary;
   latestRequests: WorkerDashboardRequest[];
   blockchainRecords: BlockchainRecord[];
   blockchainAvailable: boolean;
+}
+
+export interface WorkerDashboardSummary {
+  pendingReviews: number;
+  activeAccess: number;
+  totalRequests: number;
 }
 
 export interface WorkerBasicInfo {
