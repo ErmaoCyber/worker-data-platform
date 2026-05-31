@@ -52,12 +52,15 @@ public class WorkerDashboardServiceImpl : IWorkerDashboardService
                 EmployerId = request.EmployerId,
                 EmployerName = employer.Name,
 
-                RequestedInformation = workerInfo.Desc,
+                // TODO: Desc removed; resolve via Field.Label join after refactor.
+                // RequestedInformation = workerInfo.Desc,
+                RequestedInformation = "TODO",
                 CheckPurpose = request.Reason,
 
                 CreatedAt = request.CreatedAt,
                 Status = (int)permission.Status,
-                ExpiresAt = permission.ExpiryDate
+                // ExpiresAt = permission.ExpiryDate,  // ExpiryDate moved from permission to request in new schema
+                ExpiresAt = request.ExpiryDate
             }
         )
         .Take(5)

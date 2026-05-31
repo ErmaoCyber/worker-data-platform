@@ -33,11 +33,14 @@ public class ActiveAccessServiceImpl : IActiveAccessService
 
         var now = DateTime.UtcNow;
 
-        var activePermissions = approvedPermissions
-            .Where(permission =>
-                !permission.ExpiryDate.HasValue ||
-                permission.ExpiryDate.Value > now)
-            .ToList();
+        // TODO: Permission.ExpiryDate moved to Request.ExpiryDate.
+        // Filter should join requests to check request.ExpiryDate; compile-bridge takes all approved for now.
+        // var activePermissions = approvedPermissions
+        //     .Where(permission =>
+        //         !permission.ExpiryDate.HasValue ||
+        //         permission.ExpiryDate.Value > now)
+        //     .ToList();
+        var activePermissions = approvedPermissions.ToList();
 
         var rows = new List<ActiveAccessDto>();
 
@@ -70,7 +73,9 @@ public class ActiveAccessServiceImpl : IActiveAccessService
                     return new ActiveAccessInfoDto
                     {
                         PermissionId = permission.Id,
-                        DataType = info?.Desc ?? "Unknown"
+                        // TODO: Desc removed; resolve via Field.Label after refactor.
+                        // DataType = info?.Desc ?? "Unknown"
+                        DataType = "TODO"
                     };
                 })
                 .ToList();

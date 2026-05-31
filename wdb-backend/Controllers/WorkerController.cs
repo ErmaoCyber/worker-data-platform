@@ -140,7 +140,9 @@ public class WorkerController : ControllerBase
                     listedInfos.Add(new FieldResponse
                     {
                         Id = p.Id.ToString(),
-                        Label = info.Desc ?? "Unknown",
+                        // TODO: Desc removed; should resolve via WorkerInfo.Field.Label after proper Include.
+                        // Label = info.Desc ?? "Unknown",
+                        Label = "TODO",
                         Checked = false
                     });
                 }
@@ -149,7 +151,9 @@ public class WorkerController : ControllerBase
                     unlistedInfos.Add(new FieldResponse
                     {
                         Id = p.Id.ToString(),
-                        Label = info?.Desc ?? "Unknown",
+                        // TODO: Desc removed; should resolve via WorkerInfo.Field.Label after proper Include.
+                        // Label = info?.Desc ?? "Unknown",
+                        Label = "TODO",
                         Checked = false
                     });
                 }
