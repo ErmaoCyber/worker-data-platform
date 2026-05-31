@@ -15,6 +15,10 @@
   <ItemGroup>
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Nethereum.Contracts" Version="6.1.0" />
     <PackageReference Include="Nethereum.Signer" Version="6.1.0" />
     <PackageReference Include="Nethereum.Web3" Version="6.1.0" />
