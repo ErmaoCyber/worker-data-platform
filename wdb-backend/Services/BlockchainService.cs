@@ -2,6 +2,7 @@ using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Nethereum.Contracts;
 using Nethereum.ABI.FunctionEncoding.Attributes;
+using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
 using System.Text.Json;
@@ -105,23 +106,21 @@ public class BlockchainService : IBlockchainService
             var contract = web3.Eth.GetContract(GetAbi(), _contractAddress);
             var logFn = contract.GetFunction("logTransaction");
 
-            var input = new object[]
-            {
-                employerAddress,
-                workerAddress,
-                DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                (int)action
-            };
-
             // SendTransactionAsync defaults gas to 21000 (basic transfer), which is
-            // too low for a contract call that emits an event. Estimate first.
-            var gas = await logFn.EstimateGasAsync(account.Address, null, null, input);
-
+            // too low for this contract call (~54k for logTransaction + emit event).
+            // EstimateGasAsync hits a JSON-RPC compat issue on some Hardhat versions,
+            // so use a generous fixed cap instead.
             var txHash = await logFn.SendTransactionAsync(
                 from: account.Address,
-                gas: gas,
+                gas: new HexBigInteger(200000),
                 value: null,
-                functionInput: input
+                functionInput: new object[]
+                {
+                    employerAddress,
+                    workerAddress,
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    (int)action
+                }
             );
 
             _logger.LogInformation(
