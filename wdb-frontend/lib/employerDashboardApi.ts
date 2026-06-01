@@ -6,16 +6,24 @@ export type EmployerCompanyInfo = {
 
 export type EmployerDashboardSummary = {
   pendingRequests: number;
-  availableRequests: number;
-  partialRequests: number;
+  partiallyApprovedRequests: number;
+  approvedRequests: number;
+  activeAccessCount: number;
 };
+
+export type EmployerRequestStatus =
+  | 'Pending'
+  | 'PartiallyApproved'
+  | 'Approved'
+  | 'Rejected'
+  | 'Revoked';
 
 export type EmployerRecentRequest = {
   requestId: string;
   workerName: string;
   requestedFields: string[];
   reason: string;
-  status: 'Pending' | 'Available' | 'Partial' | 'Unavailable';
+  status: EmployerRequestStatus;
   lastUpdatedAt: string;
 };
 

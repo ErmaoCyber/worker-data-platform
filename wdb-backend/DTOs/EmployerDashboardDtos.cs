@@ -17,8 +17,11 @@ public class EmployerCompanyInfoDto
 public class EmployerDashboardSummaryDto
 {
     public int PendingRequests { get; set; }
-    public int AvailableRequests { get; set; }
-    public int PartialRequests { get; set; }
+    public int PartiallyApprovedRequests { get; set; }
+    public int ApprovedRequests { get; set; }
+
+    // Requests with at least one Approved permission and a non-expired request.
+    public int ActiveAccessCount { get; set; }
 }
 
 public class EmployerRecentRequestDto
@@ -28,7 +31,7 @@ public class EmployerRecentRequestDto
     public List<string> RequestedFields { get; set; } = new();
     public string Reason { get; set; } = string.Empty;
 
-    // Pending / Available / Partial / Unavailable
+    // Pending / PartiallyApproved / Approved / Rejected / Revoked
     public string Status { get; set; } = string.Empty;
 
     public DateTime LastUpdatedAt { get; set; }

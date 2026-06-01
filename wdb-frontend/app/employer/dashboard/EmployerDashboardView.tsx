@@ -1,5 +1,8 @@
 'use client';
-import type { EmployerDashboardData } from '@/lib/employerDashboardApi';
+import type {
+  EmployerDashboardData,
+  EmployerRequestStatus,
+} from '@/lib/employerDashboardApi';
 import RequestModal from '../requests/RequestModal';
 import { useState } from 'react';
 
@@ -7,19 +10,26 @@ type EmployerDashboardViewProps = {
   data: EmployerDashboardData;
 };
 
-function getStatusClassName(status: string) {
+function getStatusClassName(status: EmployerRequestStatus) {
   switch (status) {
     case 'Pending':
       return 'border-amber-200 bg-amber-50 text-amber-700';
-    case 'Available':
+    case 'Approved':
       return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    case 'Partial':
+    case 'PartiallyApproved':
       return 'border-blue-200 bg-blue-50 text-blue-700';
-    case 'Unavailable':
+    case 'Rejected':
+      return 'border-red-200 bg-red-50 text-red-700';
+    case 'Revoked':
       return 'border-slate-300 bg-slate-100 text-slate-600';
     default:
       return 'border-slate-200 bg-slate-50 text-slate-600';
   }
+}
+
+// Turn PascalCase status names like "PartiallyApproved" into "Partially Approved" for display.
+function formatStatus(status: string) {
+  return status.replace(/([A-Z])/g, ' $1').trim();
 }
 
 export default function EmployerDashboardView({
@@ -88,34 +98,44 @@ export default function EmployerDashboardView({
             Request Summary
           </h2>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm text-slate-500">Pending Requests</p>
+              <p className="text-sm text-slate-500">Pending</p>
               <p className="mt-2 text-3xl font-semibold text-slate-900">
                 {data.summary.pendingRequests}
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                Requests waiting for all worker responses
+                Requests waiting for worker review
               </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm text-slate-500">Available Requests</p>
+              <p className="text-sm text-slate-500">Partially Approved</p>
               <p className="mt-2 text-3xl font-semibold text-slate-900">
-                {data.summary.availableRequests}
+                {data.summary.partiallyApprovedRequests}
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                Requests where all fields are accessible
+                Requests with mixed responses
               </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm text-slate-500">Partial Requests</p>
+              <p className="text-sm text-slate-500">Approved</p>
               <p className="mt-2 text-3xl font-semibold text-slate-900">
-                {data.summary.partialRequests}
+                {data.summary.approvedRequests}
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                Requests with mixed field responses
+                Requests with all fields approved
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm text-slate-500">Active Access</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900">
+                {data.summary.activeAccessCount}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Requests you can currently view
               </p>
             </div>
           </div>
@@ -169,7 +189,7 @@ export default function EmployerDashboardView({
                         request.status
                       )}`}
                     >
-                      {request.status}
+                      {formatStatus(request.status)}
                     </span>
                   </div>
 
