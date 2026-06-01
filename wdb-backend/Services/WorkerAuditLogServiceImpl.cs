@@ -79,8 +79,8 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
                     : "Unknown company";
 
                 var categoryLabel = ToCategoryLabel(record.Category);
-                var itemLabels = record.Action == "RequestReviewed"
-                    ? SplitRequestReviewSummary(record.ItemLabels)
+                var itemLabels = UsesStructuredSummary(record)
+                    ? SplitStructuredSummary(record.ItemLabels)
                     : SplitCsv(record.ItemLabels);
 
                 return new AuditLogRecordDto
@@ -122,6 +122,13 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
         };
     }
 
+    private static bool UsesStructuredSummary(Models.BlockchainTransactionResponse record)
+    {
+        return record.Action == "RequestReviewed"
+            || record.Category == "RequestAccess"
+            || record.ItemLabels.Contains('|');
+    }
+
     private static List<string> SplitCsv(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -134,7 +141,7 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
             .ToList();
     }
 
-    private static List<string> SplitRequestReviewSummary(string value)
+    private static List<string> SplitStructuredSummary(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return new List<string>();
@@ -156,6 +163,7 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
             "WorkplaceInformation" => "Workplace Information",
             "OtherInformation" => "Other Information",
             "RequestReview" => "Request Review",
+            "RequestAccess" => "Access Grant",
             "" => "Information",
             null => "Information",
             _ => category
@@ -196,7 +204,7 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
                 $"{employerName} viewed your {categoryLabel}.",
 
             "PermissionRevoked" =>
-                $"You revoked {employerName}'s access to your {categoryLabel}.",
+                $"You revoked {employerName}'s access.",
 
             "RequestReviewed" =>
                 $"You reviewed {employerName}'s data access request.",

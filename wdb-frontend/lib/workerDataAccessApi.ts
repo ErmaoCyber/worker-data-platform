@@ -52,6 +52,8 @@ export interface ActiveAccessRecord {
 export interface ActiveAccessInfo {
   permissionId: string;
   dataType: string;
+  category: string;
+  categoryLabel: string;
 }
 
 const API_BASE_URL =
@@ -136,10 +138,10 @@ export async function getWorkerActiveAccess(
 
 export async function revokeWorkerActiveAccess(
   token: string,
-  permissionId: string,
+  requestId: string,
 ): Promise<void> {
   const response = await fetch(
-    `${API_BASE_URL}/api/worker/data-access/active-access/${permissionId}/revoke`,
+    `${API_BASE_URL}/api/worker/data-access/active-access/requests/${requestId}/revoke`,
     {
       method: 'PATCH',
       headers: {

@@ -10,10 +10,11 @@ public interface IActiveAccessService
         string? dataType = null);
 
     /// <summary>
-    /// Revoke one approved active permission owned by the worker.
+    /// Revoke all approved permissions under one active request/access grant.
+    /// This is request-level revoke, not single item revoke.
     /// </summary>
-    Task RevokePermissionAsync(
+    Task RevokeRequestAccessAsync(
         Guid workerId,
-        Guid permissionId,
+        Guid requestId,
         CancellationToken cancellationToken = default);
 }

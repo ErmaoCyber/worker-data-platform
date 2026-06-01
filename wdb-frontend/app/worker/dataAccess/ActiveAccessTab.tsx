@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   getWorkerActiveAccess,
   revokeWorkerActiveAccess,
+  type ActiveAccessInfo,
   type ActiveAccessRecord,
 } from '@/lib/workerDataAccessApi';
 
@@ -12,6 +13,12 @@ interface ActiveAccessTabProps {
   refreshKey: number;
   onChanged: () => void;
 }
+
+type CategoryGroup = {
+  category: string;
+  categoryLabel: string;
+  items: ActiveAccessInfo[];
+};
 
 function formatDateTime(dateString: string) {
   if (!dateString) return '-';
@@ -25,6 +32,32 @@ function formatDateTime(dateString: string) {
   });
 }
 
+function groupItemsByCategory(items: ActiveAccessInfo[]): CategoryGroup[] {
+  const groups = new Map<string, CategoryGroup>();
+
+  items.forEach((item) => {
+    const category = item.category || 'OtherInformation';
+    const categoryLabel = item.categoryLabel || 'Other Information';
+
+    if (!groups.has(category)) {
+      groups.set(category, {
+        category,
+        categoryLabel,
+        items: [],
+      });
+    }
+
+    groups.get(category)!.items.push(item);
+  });
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      items: group.items.sort((a, b) => a.dataType.localeCompare(b.dataType)),
+    }))
+    .sort((a, b) => a.categoryLabel.localeCompare(b.categoryLabel));
+}
+
 export default function ActiveAccessTab({
   token,
   refreshKey,
@@ -36,7 +69,7 @@ export default function ActiveAccessTab({
   const [errorMsg, setErrorMsg] = useState('');
 
   const [searchText, setSearchText] = useState('');
-  const [selectedDataType, setSelectedDataType] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
   useEffect(() => {
     async function loadActiveAccess() {
@@ -56,22 +89,38 @@ export default function ActiveAccessTab({
     loadActiveAccess();
   }, [token, refreshKey]);
 
-  const dataTypes = useMemo(() => {
-    const allTypes = records.flatMap((record) =>
-      record.workerInfo.map((info) => info.dataType),
+  const categoryOptions = useMemo(() => {
+    const categories = records.flatMap((record) =>
+      record.workerInfo.map((info) => ({
+        value: info.category,
+        label: info.categoryLabel,
+      })),
     );
 
-    return ['All', ...Array.from(new Set(allTypes))];
+    const unique = new Map<string, string>();
+
+    categories.forEach((category) => {
+      if (category.value && !unique.has(category.value)) {
+        unique.set(category.value, category.label || category.value);
+      }
+    });
+
+    return [
+      { value: 'All', label: 'All categories' },
+      ...Array.from(unique.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
   }, [records]);
 
   const filteredRecords = useMemo(() => {
     return records
       .map((record) => {
         const filteredInfo =
-          selectedDataType === 'All'
+          selectedCategory === 'All'
             ? record.workerInfo
             : record.workerInfo.filter(
-              (info) => info.dataType === selectedDataType,
+              (info) => info.category === selectedCategory,
             );
 
         return {
@@ -86,20 +135,20 @@ export default function ActiveAccessTab({
 
         return matchesCompany && record.workerInfo.length > 0;
       });
-  }, [records, searchText, selectedDataType]);
+  }, [records, searchText, selectedCategory]);
 
-  async function handleRevoke(permissionId: string, label: string) {
+  async function handleRevokeRequest(record: ActiveAccessRecord) {
     const confirmed = window.confirm(
-      `Revoke access to "${label}"? The company will no longer be allowed to access this item.`,
+      `Revoke all access for ${record.companyName || 'this company'}? The company will no longer be allowed to access the approved items in this grant.`,
     );
 
     if (!confirmed) return;
 
-    setActionId(permissionId);
+    setActionId(record.requestId);
     setErrorMsg('');
 
     try {
-      await revokeWorkerActiveAccess(token, permissionId);
+      await revokeWorkerActiveAccess(token, record.requestId);
       onChanged();
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : String(error));
@@ -157,16 +206,16 @@ export default function ActiveAccessTab({
 
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                Data type
+                Category
               </label>
               <select
-                value={selectedDataType}
-                onChange={(event) => setSelectedDataType(event.target.value)}
+                value={selectedCategory}
+                onChange={(event) => setSelectedCategory(event.target.value)}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
               >
-                {dataTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type === 'All' ? 'All data types' : type}
+                {categoryOptions.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
                   </option>
                 ))}
               </select>
@@ -186,58 +235,95 @@ export default function ActiveAccessTab({
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredRecords.map((record) => (
-              <div
-                key={record.requestId}
-                className="rounded-xl border border-slate-200 bg-slate-50/50 p-5"
-              >
-                <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900">
-                      {record.companyName || 'Unknown company'}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Purpose: {record.reason || '-'}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Granted {formatDateTime(record.grantedAt)}
-                    </p>
-                  </div>
+            {filteredRecords.map((record) => {
+              const isRevoking = actionId === record.requestId;
+              const categoryGroups = groupItemsByCategory(record.workerInfo);
+              const totalItems = record.workerInfo.length;
 
-                  <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    Active
-                  </span>
-                </div>
+              return (
+                <div
+                  key={record.requestId}
+                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-5"
+                >
+                  <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">
+                        {record.companyName || 'Unknown company'}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Purpose: {record.reason || '-'}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Granted {formatDateTime(record.grantedAt)}
+                      </p>
+                    </div>
 
-                <div className="mt-4 space-y-3">
-                  {record.workerInfo.map((info) => (
-                    <div
-                      key={info.permissionId}
-                      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {info.dataType}
-                        </p>
-                        <p className="mt-1 text-sm text-slate-500">
-                          This company can currently access this item.
-                        </p>
-                      </div>
+                    <div className="flex flex-col gap-2 sm:items-end">
+                      <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                        Active
+                      </span>
 
                       <button
-                        disabled={actionId === info.permissionId}
-                        onClick={() =>
-                          handleRevoke(info.permissionId, info.dataType)
-                        }
+                        disabled={isRevoking}
+                        onClick={() => handleRevokeRequest(record)}
                         className="w-fit rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Revoke
+                        {isRevoking ? 'Revoking...' : 'Revoke access'}
                       </button>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-slate-900">
+                        Included categories
+                      </h4>
+                      <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">
+                        {categoryGroups.length} categor
+                        {categoryGroups.length === 1 ? 'y' : 'ies'} ·{' '}
+                        {totalItems} item{totalItems === 1 ? '' : 's'}
+                      </span>
+                    </div>
+
+                    <div className="grid gap-3">
+                      {categoryGroups.map((group) => (
+                        <div
+                          key={group.category}
+                          className="rounded-xl border border-slate-200 bg-white p-4"
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <h5 className="font-medium text-slate-900">
+                                {group.categoryLabel}
+                              </h5>
+                              <p className="mt-1 text-sm text-slate-500">
+                                {group.items.length} item
+                                {group.items.length === 1 ? '' : 's'} included
+                              </p>
+                            </div>
+
+                            <span className="w-fit rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                              Access granted
+                            </span>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {group.items.map((item) => (
+                              <span
+                                key={item.permissionId}
+                                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700"
+                              >
+                                {item.dataType}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

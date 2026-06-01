@@ -62,20 +62,20 @@ public class WorkerActiveAccessController : ControllerBase
     }
 
     /// <summary>
-    /// Revoke one active permission.
+    /// Revoke all approved permissions under one active request/access grant.
     /// </summary>
-    [HttpPatch("active-access/{permissionId}/revoke")]
-    public async Task<IActionResult> RevokePermission(
-        Guid permissionId,
+    [HttpPatch("active-access/requests/{requestId}/revoke")]
+    public async Task<IActionResult> RevokeRequestAccess(
+        Guid requestId,
         CancellationToken cancellationToken)
     {
         try
         {
             var workerId = GetCurrentWorkerId();
 
-            await _activeAccessService.RevokePermissionAsync(
+            await _activeAccessService.RevokeRequestAccessAsync(
                 workerId,
-                permissionId,
+                requestId,
                 cancellationToken);
 
             return Ok(new { message = "Access revoked." });
@@ -84,13 +84,13 @@ public class WorkerActiveAccessController : ControllerBase
         {
             return Unauthorized(new { message = ex.Message });
         }
-        catch (KeyNotFoundException ex) when (ex.Message == "PERMISSION_NOT_FOUND")
+        catch (KeyNotFoundException ex) when (ex.Message == "REQUEST_NOT_FOUND")
         {
-            return NotFound(new { message = "Permission not found." });
+            return NotFound(new { message = "Access grant not found." });
         }
-        catch (InvalidOperationException ex) when (ex.Message == "PERMISSION_NOT_APPROVED")
+        catch (InvalidOperationException ex) when (ex.Message == "NO_APPROVED_PERMISSIONS")
         {
-            return Conflict(new { message = "Only approved permissions can be revoked." });
+            return Conflict(new { message = "There is no active approved access to revoke." });
         }
         catch (InvalidOperationException ex) when (ex.Message == "REQUEST_EXPIRED")
         {
