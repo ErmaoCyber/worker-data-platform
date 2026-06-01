@@ -1,4 +1,3 @@
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using wdb_backend.Abstractions;
@@ -12,23 +11,21 @@ namespace wdb_backend.Controllers;
 [Route("api/notification")]
 public class NotificationController : ControllerBase
 {
-    // inject IMediator instance for decoupling
-    private readonly IMediator _mediator;
-
-    // inject notification service instance
     private readonly INotificationService _notificationService;
 
-    public NotificationController(IMediator mediator, INotificationService notificationService)
+    public NotificationController(INotificationService notificationService)
     {
-        _mediator = mediator;
         _notificationService = notificationService;
     }
 
-    // sent command to CommandHandler
+    /*
+    // Demo trigger endpoints from the old design (frontend would POST here to fire a notification).
+    // Notifications are now produced server-side by business actions
+    // (employer creating a request, employer viewing data, etc.), so these manual
+    // trigger endpoints are disabled. Kept here for reference.
     [HttpPost("access")]
     public async Task<IActionResult> AccessInfo([FromBody] NotificationInfo notiInfo, CancellationToken ct)
     {
-        // send the command to handler
         await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, LegacyNotificationType.Access), ct);
         return Ok(new { message = "already notified" });
     }
@@ -39,8 +36,9 @@ public class NotificationController : ControllerBase
         await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, LegacyNotificationType.Request), ct);
         return Ok(new { message = "already notified" });
     }
+    */
 
-    // when click the specific notification
+    // Mark a notification as read.
     [HttpPatch("{notificationId}")]
     public async Task<IActionResult> CheckNotification(Guid notificationId, CancellationToken ct)
     {
@@ -49,15 +47,17 @@ public class NotificationController : ControllerBase
         return Ok(new { message = "already read" });
     }
 
-    // get all the notifications
+    // All notifications for a worker.
     [HttpGet("all/{workerId}")]
-    public async Task<ActionResult<ApiResponse<IList<NotificationFormatComponent>>>> GetAll(Guid workerId, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<IList<NotificationFormatComponent>>>> GetAll(
+        Guid workerId,
+        CancellationToken ct)
     {
         var notificationList = await _notificationService.GetFormattedAsync(workerId, null, ct);
         return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
     }
 
-    // get all the unread notifications
+    // Unread notifications for a worker.
     [HttpGet("unread/{workerId}")]
     public async Task<IActionResult> GetUnread(Guid workerId, CancellationToken ct)
     {
@@ -65,12 +65,11 @@ public class NotificationController : ControllerBase
         return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
     }
 
-    // get all the read notifications
+    // Read notifications for a worker.
     [HttpGet("read/{workerId}")]
     public async Task<IActionResult> GetRead(Guid workerId, CancellationToken ct)
     {
         var notificationList = await _notificationService.GetFormattedAsync(workerId, true, ct);
         return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
     }
-
 }

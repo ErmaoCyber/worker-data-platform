@@ -10,10 +10,14 @@ namespace wdb_backend.Services;
 public class EmployerRequestServiceImpl : IEmployerRequestService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public EmployerRequestServiceImpl(AppDbContext context)
+    public EmployerRequestServiceImpl(
+        AppDbContext context,
+        INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<EmployerRequestCatalogDto?> GetCatalogAsync(
@@ -143,7 +147,13 @@ public class EmployerRequestServiceImpl : IEmployerRequestService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        // TODO (task #16): publish NEW_REQUEST notification to the worker.
+        await _notificationService.NotifyAsync(
+            NotificationType.NewRequest,
+            recipientWorkerId: worker.Id,
+            recipientEmployerId: null,
+            requestId: request.Id,
+            cancellationToken);
+
         // TODO (task #17): log REQUEST_CREATED on-chain.
 
         return new CreateEmployerRequestResultDto { RequestId = request.Id };

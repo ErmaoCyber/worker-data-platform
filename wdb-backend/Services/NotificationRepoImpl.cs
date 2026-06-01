@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Data;
 using wdb_backend.DTOs;
-using wdb_backend.Models;
 
 namespace wdb_backend.Services;
 
@@ -26,7 +25,7 @@ public class NotificationRepoImpl : INotificationRepository
         var notification = await _dbContext.Notifications
             .FirstOrDefaultAsync(n => n.Id == notificationId, ct);
 
-        if (notification == null) return;  // let controller handle exception
+        if (notification == null) return;
 
         notification.IsRead = true;
         await _dbContext.SaveChangesAsync(ct);
@@ -34,105 +33,91 @@ public class NotificationRepoImpl : INotificationRepository
 
     public async Task<List<Models.Notification>> GetAllByWorkerIdAsync(Guid workerId, CancellationToken ct = default)
     {
-        // TODO: Adapt to new Notification shape (RecipientWorkerId). Pending full notification refactor.
-        // return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId).ToListAsync(ct);
-        await Task.CompletedTask;
-        return new List<Models.Notification>();
+        return await _dbContext.Notifications
+            .Where(n => n.RecipientWorkerId == workerId)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(ct);
     }
 
     public async Task<List<Models.Notification>> GetAllUnreadByWorkerIdAsync(Guid workerId, CancellationToken ct = default)
     {
-        // TODO: Adapt to new Notification shape (RecipientWorkerId). Pending full notification refactor.
-        // return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId && notification.IsRead == false).ToListAsync(ct);
-        await Task.CompletedTask;
-        return new List<Models.Notification>();
+        return await _dbContext.Notifications
+            .Where(n => n.RecipientWorkerId == workerId && n.IsRead == false)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(ct);
     }
 
     public async Task<List<Models.Notification>> GetAllReadByWorkerIdAsync(Guid workerId, CancellationToken ct = default)
     {
-        // TODO: Adapt to new Notification shape (RecipientWorkerId). Pending full notification refactor.
-        // return await _dbContext.Notifications.Where(notification => notification.WorkerId == workerId && notification.IsRead == true).ToListAsync(ct);
-        await Task.CompletedTask;
-        return new List<Models.Notification>();
+        return await _dbContext.Notifications
+            .Where(n => n.RecipientWorkerId == workerId && n.IsRead == true)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(ct);
     }
 
     public async Task<Models.Notification?> GetByIdAsync(Guid notificationId, CancellationToken ct)
     {
-        return await _dbContext.Notifications.FirstOrDefaultAsync(notification => notification.Id == notificationId, ct);
+        return await _dbContext.Notifications.FirstOrDefaultAsync(n => n.Id == notificationId, ct);
     }
 
-    // customized method for showing the readable data from the frontend
-    public async Task<NotificationFormat> FormatNotification(NotificationEvent e, CancellationToken ct)
+    public async Task<NotificationFormatComponent> FormatNotificationPipeline(
+        Models.Notification n,
+        CancellationToken ct = default)
     {
-        var employerName = (await _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == e.EmployerId, ct))?.Name;
-        var workerName = (await _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == e.WorkerId, ct))?.Name;
-        // TODO: Reinstate worker_info description lookup via Field.Label after notification refactor.
-        // var workerInfoDesc = (await _dbContext.WorkerInfos.FirstOrDefaultAsync(workerInfo => workerInfo.Id == e.WorkerInfoId, ct))?.Desc;
-        string? workerInfoDesc = null;
-        return new NotificationFormat
-        (
-            employerName,
-            workerName,
-            e.Type.ToString(),
-            workerInfoDesc,
-            e.CreateAt
-        );
-    }
+        // Resolve sender name (employer) via the associated request when present.
+        // Worker-bound notifications (NEW_REQUEST / DATA_ACCESSED) have an employer sender.
+        string? employerName = null;
+        if (n.RequestId.HasValue)
+        {
+            employerName = await _dbContext.Requests
+                .AsNoTracking()
+                .Where(r => r.Id == n.RequestId.Value)
+                .Join(_dbContext.Employers.AsNoTracking(),
+                    r => r.EmployerId,
+                    e => e.Id,
+                    (r, e) => e.Name)
+                .FirstOrDefaultAsync(ct);
+        }
 
-    public async Task<NotificationFormatComponent> FormatNotificationPipeline(Models.Notification n, CancellationToken ct)
-    {
-        // TODO: Adapt to new Notification shape (RecipientWorkerId / RecipientEmployerId / RequestId / CreatedAt).
-        /*
-        var employerName = (await _dbContext.Employers.FirstOrDefaultAsync(employer => employer.Id == n.EmployerId, ct))?.Name;
-        var workerName = (await _dbContext.Workers.FirstOrDefaultAsync(worker => worker.Id == n.WorkerId, ct))?.Name;
-        var workerInfoDesc = (await _dbContext.WorkerInfos.FirstOrDefaultAsync(workerInfo => workerInfo.Id == n.WorkerInfoId, ct))?.Desc;
-        return new NotificationFormatComponent
-        (
+        return new NotificationFormatComponent(
             n.Id,
             employerName,
-            workerName,
+            null,        // worker name: not relevant when the worker is the recipient
             n.Type,
-            workerInfoDesc,
-            n.CreateAt
-        );
-        */
-        await Task.CompletedTask;
-        return new NotificationFormatComponent(n.Id, null, null, n.Type, null, n.CreatedAt);
+            null,        // legacy per-field description no longer applies
+            n.CreatedAt);
     }
 
     public async Task<IList<NotificationFormatComponent>> GetFormattedNotificationsAsync(
-        Guid workerId, bool? isRead, CancellationToken ct)
+        Guid workerId,
+        bool? isRead,
+        CancellationToken ct = default)
     {
-        // TODO: Adapt LINQ query to new Notification model after refactor.
-        /*
         var rows = await (
-            from n in _dbContext.Notifications
-            where n.WorkerId == workerId && (!isRead.HasValue || n.IsRead == isRead.Value)
-            join e in _dbContext.Employers on n.EmployerId equals e.Id into eg
+            from n in _dbContext.Notifications.AsNoTracking()
+            where n.RecipientWorkerId == workerId
+                  && (!isRead.HasValue || n.IsRead == isRead.Value)
+            join r in _dbContext.Requests.AsNoTracking() on n.RequestId equals r.Id into rg
+            from r in rg.DefaultIfEmpty()
+            join e in _dbContext.Employers.AsNoTracking() on (r != null ? r.EmployerId : Guid.Empty) equals e.Id into eg
             from e in eg.DefaultIfEmpty()
-            join wi in _dbContext.WorkerInfos on n.WorkerInfoId equals wi.Id into wig
-            from wi in wig.DefaultIfEmpty()
-            orderby n.CreateAt descending
+            orderby n.CreatedAt descending
             select new
             {
                 n.Id,
-                EmployerName = (string?)e.Name,
+                EmployerName = e != null ? (string?)e.Name : null,
                 n.Type,
-                WorkerInfoDesc = (string?)wi.Desc,
-                n.CreateAt
+                n.CreatedAt
             }
         ).ToListAsync(ct);
 
-        return rows.Select(r => new NotificationFormatComponent(
-            r.Id,
-            r.EmployerName,
+        return rows.Select(row => new NotificationFormatComponent(
+            row.Id,
+            row.EmployerName,
             null,
-            r.Type,
-            r.WorkerInfoDesc,
-            r.CreateAt
+            row.Type,
+            null,
+            row.CreatedAt
         )).ToList();
-        */
-        await Task.CompletedTask;
-        return new List<NotificationFormatComponent>();
     }
 }

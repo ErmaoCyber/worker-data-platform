@@ -3,6 +3,7 @@ using wdb_backend.Abstractions;
 using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.DTOs;
+using wdb_backend.Models;
 
 namespace wdb_backend.Services;
 
@@ -10,11 +11,16 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
 {
     private readonly AppDbContext _context;
     private readonly ISupabaseStorageService _storage;
+    private readonly INotificationService _notificationService;
 
-    public EmployerActiveAccessServiceImpl(AppDbContext context, ISupabaseStorageService storage)
+    public EmployerActiveAccessServiceImpl(
+        AppDbContext context,
+        ISupabaseStorageService storage,
+        INotificationService notificationService)
     {
         _context = context;
         _storage = storage;
+        _notificationService = notificationService;
     }
 
     public async Task<List<EmployerActiveAccessDto>> GetActiveAccessAsync(
@@ -129,7 +135,13 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
 
         var info = permission.WorkerInfo;
 
-        // TODO (task #16): publish DATA_ACCESSED notification to the worker.
+        await _notificationService.NotifyAsync(
+            NotificationType.DataAccessed,
+            recipientWorkerId: permission.WorkerId,
+            recipientEmployerId: null,
+            requestId: permission.RequestId,
+            cancellationToken);
+
         // TODO (task #17): log DATA_ACCESSED on-chain.
 
         if (info.Type == "file")
