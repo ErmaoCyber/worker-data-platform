@@ -12,15 +12,18 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
     private readonly AppDbContext _context;
     private readonly ISupabaseStorageService _storage;
     private readonly INotificationService _notificationService;
+    private readonly IBlockchainAuditService _audit;
 
     public EmployerActiveAccessServiceImpl(
         AppDbContext context,
         ISupabaseStorageService storage,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IBlockchainAuditService audit)
     {
         _context = context;
         _storage = storage;
         _notificationService = notificationService;
+        _audit = audit;
     }
 
     public async Task<List<EmployerActiveAccessDto>> GetActiveAccessAsync(
@@ -142,7 +145,11 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
             requestId: permission.RequestId,
             cancellationToken);
 
-        // TODO (task #17): log DATA_ACCESSED on-chain.
+        await _audit.TryLogAsync(
+            permission.Request.EmployerId,
+            permission.WorkerId,
+            BlockchainAction.DataAccessed,
+            cancellationToken);
 
         if (info.Type == "file")
         {

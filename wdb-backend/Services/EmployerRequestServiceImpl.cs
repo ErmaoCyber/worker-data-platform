@@ -11,13 +11,16 @@ public class EmployerRequestServiceImpl : IEmployerRequestService
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IBlockchainAuditService _audit;
 
     public EmployerRequestServiceImpl(
         AppDbContext context,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IBlockchainAuditService audit)
     {
         _context = context;
         _notificationService = notificationService;
+        _audit = audit;
     }
 
     public async Task<EmployerRequestCatalogDto?> GetCatalogAsync(
@@ -154,7 +157,11 @@ public class EmployerRequestServiceImpl : IEmployerRequestService
             requestId: request.Id,
             cancellationToken);
 
-        // TODO (task #17): log REQUEST_CREATED on-chain.
+        await _audit.TryLogAsync(
+            employerId,
+            worker.Id,
+            BlockchainAction.RequestCreated,
+            cancellationToken);
 
         return new CreateEmployerRequestResultDto { RequestId = request.Id };
     }

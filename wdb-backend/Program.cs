@@ -75,6 +75,9 @@ builder.Services.AddSingleton<IBlockchainService, BlockchainService>();
 // Supabase storage (signed URL generation for private file objects)
 builder.Services.AddHttpClient<ISupabaseStorageService, SupabaseStorageService>();
 
+// On-chain audit logging (best-effort: swallows failures so the chain never blocks business actions)
+builder.Services.AddScoped<IBlockchainAuditService, BlockchainAuditService>();
+
 // DbContext
 builder.Services.AddDbContextPool<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
