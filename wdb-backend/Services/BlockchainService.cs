@@ -105,17 +105,23 @@ public class BlockchainService : IBlockchainService
             var contract = web3.Eth.GetContract(GetAbi(), _contractAddress);
             var logFn = contract.GetFunction("logTransaction");
 
+            var input = new object[]
+            {
+                employerAddress,
+                workerAddress,
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                (int)action
+            };
+
+            // SendTransactionAsync defaults gas to 21000 (basic transfer), which is
+            // too low for a contract call that emits an event. Estimate first.
+            var gas = await logFn.EstimateGasAsync(account.Address, null, null, input);
+
             var txHash = await logFn.SendTransactionAsync(
                 from: account.Address,
-                gas: null,
+                gas: gas,
                 value: null,
-                functionInput: new object[]
-                {
-                    employerAddress,
-                    workerAddress,
-                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    (int)action
-                }
+                functionInput: input
             );
 
             _logger.LogInformation(
