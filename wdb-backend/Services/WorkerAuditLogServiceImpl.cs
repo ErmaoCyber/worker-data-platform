@@ -79,7 +79,9 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
                     : "Unknown company";
 
                 var categoryLabel = ToCategoryLabel(record.Category);
-                var itemLabels = SplitCsv(record.ItemLabels);
+                var itemLabels = record.Action == "RequestReviewed"
+                    ? SplitRequestReviewSummary(record.ItemLabels)
+                    : SplitCsv(record.ItemLabels);
 
                 return new AuditLogRecordDto
                 {
@@ -132,6 +134,17 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
             .ToList();
     }
 
+    private static List<string> SplitRequestReviewSummary(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return new List<string>();
+
+        return value
+            .Split("||", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+    }
+
     private static string ToCategoryLabel(string category)
     {
         return category switch
@@ -142,6 +155,7 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
             "FinancialInformation" => "Financial Information",
             "WorkplaceInformation" => "Workplace Information",
             "OtherInformation" => "Other Information",
+            "RequestReview" => "Request Review",
             "" => "Information",
             null => "Information",
             _ => category
@@ -157,6 +171,7 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
             "PermissionRejected" => "Request Rejected",
             "DataViewed" => "Data Viewed",
             "PermissionRevoked" => "Access Revoked",
+            "RequestReviewed" => "Request Reviewed",
             _ => "Access Record"
         };
     }
@@ -182,6 +197,9 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
 
             "PermissionRevoked" =>
                 $"You revoked {employerName}'s access to your {categoryLabel}.",
+
+            "RequestReviewed" =>
+                $"You reviewed {employerName}'s data access request.",
 
             _ =>
                 $"An access-related action involving {employerName} and your {categoryLabel} was recorded."

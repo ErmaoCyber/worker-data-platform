@@ -34,6 +34,16 @@ function formatDateTime(dateString: string): string {
 function getActionTone(action: string) {
   const normalised = action?.trim().toLowerCase() ?? '';
 
+  // Check RequestReviewed before "view".
+  // "RequestReviewed" contains "view", so otherwise it is wrongly shown as Viewed.
+  if (normalised === 'requestreviewed') {
+    return {
+      label: 'Reviewed',
+      badgeClass: 'bg-indigo-50 text-indigo-700',
+      dotClass: 'bg-indigo-500',
+    };
+  }
+
   if (normalised.includes('approve')) {
     return {
       label: 'Approved',
@@ -88,8 +98,7 @@ function getDisplayTitle(record: AuditLogRecord) {
 function getDisplayMessage(record: AuditLogRecord) {
   if (record.userMessage) return record.userMessage;
 
-  return `${record.employerName || 'A company'
-    } performed an access-related action.`;
+  return `${record.employerName || 'A company'} performed an access-related action.`;
 }
 
 function actionItemHeading(action: string) {
@@ -104,8 +113,52 @@ function actionItemHeading(action: string) {
       return 'Viewed information';
     case 'PermissionRevoked':
       return 'Revoked information';
+    case 'RequestReviewed':
+      return 'Review summary';
     default:
       return 'Information involved';
+  }
+}
+
+function getRecordTypeLabel(record: AuditLogRecord) {
+  if (record.action === 'RequestReviewed') {
+    return 'Request review';
+  }
+
+  return record.categoryLabel || 'Information';
+}
+
+function formatReviewSummaryItem(item: string) {
+  const [section, detail] = item.split('|').map((part) => part.trim());
+
+  if (!detail) {
+    return {
+      heading: 'Review detail',
+      body: item,
+    };
+  }
+
+  switch (section) {
+    case 'APPROVED':
+      return {
+        heading: 'Approved items',
+        body: detail,
+      };
+    case 'REJECTED':
+      return {
+        heading: 'Rejected items',
+        body: detail,
+      };
+    case 'CUSTOM_REQUEST':
+      return {
+        heading: 'Custom request',
+        body: detail,
+      };
+    default:
+      return {
+        heading: section || 'Review detail',
+        body: detail,
+      };
   }
 }
 
@@ -179,7 +232,7 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
 
           <p className="mt-2 max-w-3xl text-sm text-slate-500">
             Review which companies requested, viewed, or lost access to your
-            data categories. Blockchain proof is available in each record.
+            data. Blockchain proof is kept in the background for verification.
           </p>
 
           <p className="mt-3 text-sm text-slate-500">
@@ -253,8 +306,8 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
                 </h3>
 
                 <p className="mt-2 text-sm text-slate-500">
-                  Access-related blockchain records will appear here when the
-                  blockchain service is running and records have been created.
+                  Access-related blockchain records will appear here when
+                  records have been created.
                 </p>
               </div>
             </div>
@@ -280,6 +333,8 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
                     `${record.action}-${record.createdAt}-${record.employerName}`;
 
                   const isExpanded = expandedKey === key;
+                  const isRequestReviewed = record.action === 'RequestReviewed';
+                  const recordTypeLabel = getRecordTypeLabel(record);
 
                   return (
                     <article key={key} className="px-6 py-5">
@@ -315,9 +370,9 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
                               {record.employerName || 'Unknown company'}
                             </span>
                             <span className="mx-2 text-slate-300">·</span>
-                            Category:{' '}
+                            Type:{' '}
                             <span className="font-medium text-slate-800">
-                              {record.categoryLabel || 'Information'}
+                              {recordTypeLabel}
                             </span>
                             <span className="mx-2 text-slate-300">·</span>
                             Proof:{' '}
@@ -329,7 +384,9 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
                           {isExpanded && (
                             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                               <h4 className="text-sm font-semibold text-slate-900">
-                                Access details
+                                {isRequestReviewed
+                                  ? 'Request review details'
+                                  : 'Access details'}
                               </h4>
 
                               <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -344,10 +401,10 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
 
                                 <div>
                                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                    Category
+                                    Type
                                   </p>
                                   <p className="mt-1 text-sm font-medium text-slate-800">
-                                    {record.categoryLabel || 'Information'}
+                                    {recordTypeLabel}
                                   </p>
                                 </div>
                               </div>
@@ -358,91 +415,44 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
                                 </p>
 
                                 {record.itemLabels.length > 0 ? (
-                                  <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                                    {record.itemLabels.map((item) => (
-                                      <li
-                                        key={item}
-                                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
-                                      >
-                                        {item}
-                                      </li>
-                                    ))}
-                                  </ul>
+                                  <div className="mt-2 grid gap-3">
+                                    {record.itemLabels.map((item) => {
+                                      const formatted = isRequestReviewed
+                                        ? formatReviewSummaryItem(item)
+                                        : {
+                                          heading: '',
+                                          body: item,
+                                        };
+
+                                      return (
+                                        <div
+                                          key={item}
+                                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                                        >
+                                          {formatted.heading && (
+                                            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                              {formatted.heading}
+                                            </p>
+                                          )}
+                                          <p>{formatted.body}</p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 ) : (
                                   <p className="mt-2 text-sm text-slate-500">
                                     No specific items were attached to this
-                                    blockchain record.
+                                    record.
                                   </p>
                                 )}
                               </div>
 
-                              <div className="mt-5 border-t border-slate-200 pt-4">
-                                <h4 className="text-sm font-semibold text-slate-900">
-                                  Blockchain proof
-                                </h4>
-
-                                <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                      Transaction hash
-                                    </p>
-
-                                    <p className="mt-1 break-all font-mono text-xs text-slate-700">
-                                      {record.transactionHash || 'Not available'}
-                                    </p>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                      Request ID
-                                    </p>
-
-                                    <p className="mt-1 break-all font-mono text-xs text-slate-700">
-                                      {record.requestId || 'Not available'}
-                                    </p>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                      Permission IDs
-                                    </p>
-
-                                    <p className="mt-1 break-all font-mono text-xs text-slate-700">
-                                      {record.permissionIds || 'Not available'}
-                                    </p>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                      Block hash
-                                    </p>
-
-                                    <p className="mt-1 break-all font-mono text-xs text-slate-700">
-                                      {record.blockHash || 'Not available'}
-                                    </p>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                      Employer address
-                                    </p>
-
-                                    <p className="mt-1 break-all font-mono text-xs text-slate-700">
-                                      {record.employerAddress || 'Not available'}
-                                    </p>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                      Worker address
-                                    </p>
-
-                                    <p className="mt-1 break-all font-mono text-xs text-slate-700">
-                                      {record.workerAddress || 'Not available'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
+                              <p className="mt-5 border-t border-slate-200 pt-4 text-xs text-slate-500">
+                                Blockchain proof:{' '}
+                                <span className="font-mono">
+                                  {shortenValue(record.transactionHash, 12, 10)}
+                                </span>
+                              </p>
                             </div>
                           )}
                         </div>
@@ -472,10 +482,7 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
                   <div className="flex gap-2">
                     <button
                       disabled={page === 1}
-                      onClick={() => {
-                        setPage((current) => Math.max(1, current - 1));
-                        setExpandedKey(null);
-                      }}
+                      onClick={handlePreviousPage}
                       className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Previous
@@ -487,10 +494,7 @@ export default function AuditLogView({ records }: AuditLogViewProps) {
 
                     <button
                       disabled={page === totalPages}
-                      onClick={() => {
-                        setPage((current) => Math.min(totalPages, current + 1));
-                        setExpandedKey(null);
-                      }}
+                      onClick={handleNextPage}
                       className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Next

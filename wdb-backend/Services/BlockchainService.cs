@@ -1,5 +1,6 @@
 using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Contracts;
+using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
 using Nethereum.Web3;
@@ -146,9 +147,13 @@ public class BlockchainService : IBlockchainService
             var contract = web3.Eth.GetContract(GetAbi(), _contractAddress);
             var logFn = contract.GetFunction("logTransaction");
 
+            // Contract calls need more than the default 21,000 gas.
+            // 500,000 is safe for the local Hardhat demo environment.
+            var gas = new HexBigInteger(500_000);
+
             var txHash = await logFn.SendTransactionAsync(
                 from: account.Address,
-                gas: null,
+                gas: gas,
                 value: null,
                 functionInput:
                 [

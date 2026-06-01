@@ -30,5 +30,8 @@ public enum BlockchainAction
     PermissionApproved = 1,
     PermissionRejected = 2,
     DataViewed = 3,
-    PermissionRevoked = 4
+    PermissionRevoked = 4,
+
+    // One worker submit review action for the whole request.
+    RequestReviewed = 5
 }

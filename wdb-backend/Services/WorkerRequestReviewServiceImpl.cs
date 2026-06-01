@@ -14,16 +14,24 @@ namespace wdb_backend.Services;
 /// - approve/reject requested fields
 /// - approve/reject custom request by adding a new worker_info item
 ///
-/// This version also creates a REQUEST_REVIEWED notification for the employer.
-/// Blockchain side effects are intentionally not included here yet.
+/// Blockchain design:
+/// One Submit Review action writes one RequestReviewed blockchain record.
+/// The record contains the whole request review summary instead of one record per category.
 /// </summary>
 public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
 {
     private readonly AppDbContext _context;
+    private readonly IBlockchainService _blockchainService;
+    private readonly ILogger<WorkerRequestReviewServiceImpl> _logger;
 
-    public WorkerRequestReviewServiceImpl(AppDbContext context)
+    public WorkerRequestReviewServiceImpl(
+        AppDbContext context,
+        IBlockchainService blockchainService,
+        ILogger<WorkerRequestReviewServiceImpl> logger)
     {
         _context = context;
+        _blockchainService = blockchainService;
+        _logger = logger;
     }
 
     public async Task<List<WorkerActiveRequestDto>> GetActiveRequestsAsync(
@@ -142,6 +150,12 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
 
         var dataRequest = await _context.Requests
             .Include(r => r.Permissions)
+                .ThenInclude(p => p.Field)
+                    .ThenInclude(f => f!.Category)
+            .Include(r => r.Permissions)
+                .ThenInclude(p => p.WorkerInfo)
+                    .ThenInclude(wi => wi!.Field)
+                        .ThenInclude(f => f!.Category)
             .FirstOrDefaultAsync(
                 r => r.Id == requestId && r.WorkerId == workerId,
                 cancellationToken)
@@ -156,16 +170,22 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
             request.Items,
             cancellationToken);
 
+        Guid? customPermissionId = null;
+        string? customDecision = null;
+        string? customRequestDescription = null;
+
         if (request.CustomRequestDecision != null)
         {
-            await ReviewCustomRequestAsync(
+            customDecision = request.CustomRequestDecision.Decision.Trim().ToLowerInvariant();
+            customRequestDescription = dataRequest.CustomRequest;
+
+            customPermissionId = await ReviewCustomRequestAsync(
                 workerId,
                 dataRequest,
                 request.CustomRequestDecision,
                 cancellationToken);
         }
 
-        // Notify the employer that the worker has reviewed the request.
         _context.Notifications.Add(new wdb_backend.Models.Notification
         {
             RecipientWorkerId = null,
@@ -176,6 +196,15 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         });
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        await LogRequestReviewToBlockchainAsync(
+            workerId,
+            dataRequest.Id,
+            request.Items.Select(i => i.PermissionId).ToList(),
+            customPermissionId,
+            customDecision,
+            customRequestDescription,
+            cancellationToken);
     }
 
     private async Task ReviewPermissionItemsAsync(
@@ -233,7 +262,12 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         }
     }
 
-    private async Task ReviewCustomRequestAsync(
+    /// <summary>
+    /// Reviews the custom request.
+    /// Returns the new approved permission id when the worker adds and approves a custom item.
+    /// Returns null when the custom request is rejected.
+    /// </summary>
+    private async Task<Guid?> ReviewCustomRequestAsync(
         Guid workerId,
         Request dataRequest,
         SubmitWorkerCustomRequestDecision decision,
@@ -250,7 +284,7 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         if (normalizedDecision == "rejected")
         {
             dataRequest.CustomRequestStatus = "rejected";
-            return;
+            return null;
         }
 
         if (normalizedDecision != "approved")
@@ -281,6 +315,7 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
 
         var workerInfo = new WorkerInfo
         {
+            Id = Guid.NewGuid(),
             WorkerId = workerId,
             FieldId = null,
             CustomLabel = label,
@@ -289,11 +324,9 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
             UpdatedAt = DateTime.UtcNow
         };
 
-        _context.WorkerInfos.Add(workerInfo);
-        await _context.SaveChangesAsync(cancellationToken);
-
         var permission = new Permission
         {
+            Id = Guid.NewGuid(),
             RequestId = dataRequest.Id,
             WorkerId = workerId,
             FieldId = null,
@@ -302,8 +335,182 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
             LastUpdatedAt = DateTime.UtcNow
         };
 
+        _context.WorkerInfos.Add(workerInfo);
         _context.Permissions.Add(permission);
+
         dataRequest.CustomRequestStatus = "approved";
+
+        return permission.Id;
+    }
+
+    private async Task LogRequestReviewToBlockchainAsync(
+        Guid workerId,
+        Guid requestId,
+        List<Guid> reviewedPermissionIds,
+        Guid? customPermissionId,
+        string? customDecision,
+        string? customRequestDescription,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var dataRequest = await _context.Requests
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    r => r.Id == requestId && r.WorkerId == workerId,
+                    cancellationToken)
+                ?? throw new KeyNotFoundException("REQUEST_NOT_FOUND_FOR_BLOCKCHAIN_LOG");
+
+            var worker = await _context.Workers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(w => w.Id == workerId, cancellationToken)
+                ?? throw new KeyNotFoundException("WORKER_NOT_FOUND_FOR_BLOCKCHAIN_LOG");
+
+            var employer = await _context.Employers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == dataRequest.EmployerId, cancellationToken)
+                ?? throw new KeyNotFoundException("EMPLOYER_NOT_FOUND_FOR_BLOCKCHAIN_LOG");
+
+            if (string.IsNullOrWhiteSpace(worker.PrivateKey))
+                throw new InvalidOperationException("WORKER_PRIVATE_KEY_MISSING");
+
+            if (string.IsNullOrWhiteSpace(worker.BlockchainAddress))
+                throw new InvalidOperationException("WORKER_BLOCKCHAIN_ADDRESS_MISSING");
+
+            if (string.IsNullOrWhiteSpace(employer.BlockchainAddress))
+                throw new InvalidOperationException("EMPLOYER_BLOCKCHAIN_ADDRESS_MISSING");
+
+            var allPermissionIdsToLog = reviewedPermissionIds
+                .Where(id => id != Guid.Empty)
+                .ToList();
+
+            if (customPermissionId.HasValue && customPermissionId.Value != Guid.Empty)
+            {
+                allPermissionIdsToLog.Add(customPermissionId.Value);
+            }
+
+            var permissionsToLog = await _context.Permissions
+                .AsNoTracking()
+                .Where(p =>
+                    p.RequestId == requestId &&
+                    allPermissionIdsToLog.Contains(p.Id))
+                .Include(p => p.Field)
+                    .ThenInclude(f => f!.Category)
+                .Include(p => p.WorkerInfo)
+                    .ThenInclude(wi => wi!.Field)
+                        .ThenInclude(f => f!.Category)
+                .ToListAsync(cancellationToken);
+
+            var permissionIds = string.Join(
+                ",",
+                permissionsToLog
+                    .OrderBy(p => ResolveCategory(p))
+                    .ThenBy(p => ResolveLabel(p))
+                    .Select(p => p.Id.ToString()));
+
+            var reviewSummary = BuildRequestReviewSummary(
+                permissionsToLog,
+                customDecision,
+                customRequestDescription,
+                customPermissionId);
+
+            _logger.LogWarning(
+                "Writing request-level blockchain review log. RequestId={RequestId}, PermissionCount={PermissionCount}, Summary={Summary}",
+                requestId,
+                permissionsToLog.Count,
+                reviewSummary);
+
+            var txHash = await _blockchainService.LogCategoryTransactionAsync(
+                privateKey: worker.PrivateKey!,
+                employerAddress: employer.BlockchainAddress!,
+                workerAddress: worker.BlockchainAddress!,
+                requestId: dataRequest.Id.ToString(),
+                category: "RequestReview",
+                permissionIds: permissionIds,
+                itemLabels: reviewSummary,
+                action: BlockchainAction.RequestReviewed,
+                cancellationToken: cancellationToken);
+
+            _logger.LogWarning(
+                "Request-level blockchain review log written successfully. RequestId={RequestId}, TxHash={TxHash}",
+                requestId,
+                txHash);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "REQUEST REVIEW BLOCKCHAIN LOG FAILED. RequestId={RequestId}, Error={ErrorMessage}",
+                requestId,
+                ex.Message);
+
+            // Keep this throw during testing so blockchain failures are visible.
+            // After demo stability is confirmed, this can be removed if the team
+            // wants database review to succeed even when blockchain is unavailable.
+            throw;
+        }
+    }
+
+    private static string BuildRequestReviewSummary(
+        List<Permission> permissions,
+        string? customDecision,
+        string? customRequestDescription,
+        Guid? customPermissionId)
+    {
+        var sections = new List<string>();
+
+        var approvedGroups = permissions
+            .Where(p => p.Status == PermissionStatus.Approved)
+            .GroupBy(ResolveCategory)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        if (approvedGroups.Any())
+        {
+            var approvedText = string.Join(
+                "; ",
+                approvedGroups.Select(g =>
+                    $"{g.Key}: {string.Join(", ", g.OrderBy(ResolveLabel).Select(ResolveLabel))}"));
+
+            sections.Add($"APPROVED | {approvedText}");
+        }
+
+        var rejectedGroups = permissions
+            .Where(p => p.Status == PermissionStatus.Rejected)
+            .GroupBy(ResolveCategory)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        if (rejectedGroups.Any())
+        {
+            var rejectedText = string.Join(
+                "; ",
+                rejectedGroups.Select(g =>
+                    $"{g.Key}: {string.Join(", ", g.OrderBy(ResolveLabel).Select(ResolveLabel))}"));
+
+            sections.Add($"REJECTED | {rejectedText}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(customDecision))
+        {
+            if (customDecision == "approved" && customPermissionId.HasValue)
+            {
+                var customPermission = permissions
+                    .FirstOrDefault(p => p.Id == customPermissionId.Value);
+
+                sections.Add(
+                    $"CUSTOM_REQUEST | approved: {ResolveLabel(customPermission)}");
+            }
+            else if (customDecision == "rejected")
+            {
+                sections.Add(
+                    $"CUSTOM_REQUEST | rejected: {customRequestDescription ?? "Custom request"}");
+            }
+        }
+
+        return sections.Any()
+            ? string.Join(" || ", sections)
+            : "No reviewed items were attached to this request review.";
     }
 
     private static WorkerInfo? ResolveWorkerInfoForDisplay(
@@ -354,6 +561,24 @@ public class WorkerRequestReviewServiceImpl : IWorkerRequestReviewService
         return permission.Field?.AllowedType
             ?? info?.Type
             ?? "text";
+    }
+
+    private static string ResolveLabel(Permission? permission)
+    {
+        if (permission == null)
+            return "Unknown";
+
+        return permission.Field?.Label
+            ?? permission.WorkerInfo?.Field?.Label
+            ?? permission.WorkerInfo?.CustomLabel
+            ?? "Unknown";
+    }
+
+    private static string ResolveCategory(Permission permission)
+    {
+        return permission.Field?.Category?.CategoryName
+            ?? permission.WorkerInfo?.Field?.Category?.CategoryName
+            ?? "OtherInformation";
     }
 
     private async Task<WorkerInfo?> ResolveWorkerInfoForApprovalAsync(

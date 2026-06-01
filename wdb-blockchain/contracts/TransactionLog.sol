@@ -3,16 +3,18 @@ pragma solidity ^0.8.24;
 
 contract TransactionLog {
   // Keep this order aligned with backend BlockchainAction enum.
+  // Existing values are kept for compatibility with older local test records.
   enum Action {
     PermissionRequested, // 0
     PermissionApproved,  // 1
     PermissionRejected,  // 2
     DataViewed,          // 3
-    PermissionRevoked    // 4
+    PermissionRevoked,   // 4
+    RequestReviewed      // 5
   }
 
   /*
-    Category-level access event.
+    Category-level / request-level access event.
 
     Main record:
     - employer
@@ -23,7 +25,7 @@ contract TransactionLog {
 
     Details:
     - permissionIds: comma-separated permission IDs
-    - itemLabels: comma-separated item labels in this category
+    - itemLabels: item labels or request-level review summary
 
     Important:
     Do not store actual personal data values on-chain.
