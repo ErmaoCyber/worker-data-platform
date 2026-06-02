@@ -10,8 +10,9 @@ const mockDashboardData: EmployerDashboardData = {
   },
   summary: {
     pendingRequests: 2,
-    availableRequests: 1,
-    partialRequests: 1,
+    partiallyApprovedRequests: 1,
+    approvedRequests: 1,
+    activeAccessCount: 1,
   },
   recentRequests: [
     {
@@ -27,7 +28,7 @@ const mockDashboardData: EmployerDashboardData = {
       workerName: 'Luca',
       requestedFields: ['Training Status'],
       reason: 'Project qualification',
-      status: 'Available',
+      status: 'Approved',
       lastUpdatedAt: '2026-04-28T10:20:00.000Z',
     },
     {
@@ -35,7 +36,7 @@ const mockDashboardData: EmployerDashboardData = {
       workerName: 'Alyanna',
       requestedFields: ['Emergency Contact'],
       reason: 'Emergency preparedness',
-      status: 'Partial',
+      status: 'PartiallyApproved',
       lastUpdatedAt: '2026-04-27T10:20:00.000Z',
     },
     {
@@ -43,7 +44,7 @@ const mockDashboardData: EmployerDashboardData = {
       workerName: 'Jason',
       requestedFields: ['PPE Requirement'],
       reason: 'Site safety check',
-      status: 'Unavailable',
+      status: 'Rejected',
       lastUpdatedAt: '2026-04-26T10:20:00.000Z',
     },
   ],
@@ -70,14 +71,14 @@ describe('EmployerDashboardView', () => {
   it('renders request summary cards', () => {
     render(<EmployerDashboardView data={mockDashboardData} />);
 
-    expect(screen.getByText('Pending Requests')).toBeInTheDocument();
-    expect(screen.getByText('Available Requests')).toBeInTheDocument();
-    expect(screen.getByText('Partial Requests')).toBeInTheDocument();
+    expect(screen.getAllByText('Pending').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Partially Approved').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Approved').length).toBeGreaterThan(0);
+    expect(screen.getByText('Active Access')).toBeInTheDocument();
 
     expect(screen.getByText('2')).toBeInTheDocument();
-
-    // There are two summary values with "1", so use getAllByText.
-    expect(screen.getAllByText('1')).toHaveLength(2);
+    // Three summary cards show "1": partiallyApproved, approved, activeAccess.
+    expect(screen.getAllByText('1')).toHaveLength(3);
   });
 
   it('renders recent access request details', () => {
@@ -105,10 +106,11 @@ describe('EmployerDashboardView', () => {
   it('renders all supported request statuses', () => {
     render(<EmployerDashboardView data={mockDashboardData} />);
 
+    // Status badges are formatted from PascalCase to spaced words.
     expect(screen.getAllByText('Pending').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Available').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Partial').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Unavailable').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Approved').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Partially Approved').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Rejected').length).toBeGreaterThan(0);
   });
 
   it('shows an empty state when there are no recent requests', () => {
@@ -120,8 +122,9 @@ describe('EmployerDashboardView', () => {
       },
       summary: {
         pendingRequests: 0,
-        availableRequests: 0,
-        partialRequests: 0,
+        partiallyApprovedRequests: 0,
+        approvedRequests: 0,
+        activeAccessCount: 0,
       },
       recentRequests: [],
     };

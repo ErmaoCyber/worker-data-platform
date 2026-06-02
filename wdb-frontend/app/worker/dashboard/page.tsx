@@ -14,18 +14,15 @@ export default function WorkerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Read auth state from AuthContext
-  const { userId, role, isAuthReady } = useAuth();
+  const { token, role, isAuthReady } = useAuth();
 
   useEffect(() => {
     async function loadDashboard() {
-      // Wait until AuthContext finishes restoring auth data from localStorage
       if (!isAuthReady) {
         return;
       }
 
-      // Only workers can access this page
-      if (!userId || role !== 'worker') {
+      if (!token || role !== 'worker') {
         router.push('/login');
         return;
       }
@@ -34,7 +31,7 @@ export default function WorkerDashboardPage() {
         setLoading(true);
         setError('');
 
-        const dashboardData = await getWorkerDashboard(userId);
+        const dashboardData = await getWorkerDashboard(token);
         setData(dashboardData);
       } catch {
         setError('Failed to load dashboard.');
@@ -44,7 +41,7 @@ export default function WorkerDashboardPage() {
     }
 
     loadDashboard();
-  }, [isAuthReady, userId, role, router]);
+  }, [isAuthReady, token, role, router]);
 
   if (!isAuthReady || loading) {
     return (

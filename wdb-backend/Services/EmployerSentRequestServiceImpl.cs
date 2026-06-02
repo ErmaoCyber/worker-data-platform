@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
-using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.DTOs;
+using wdb_backend.Models;
 
 namespace wdb_backend.Services;
 
@@ -21,122 +21,88 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
     {
         var employerExists = await _context.Employers
             .AsNoTracking()
-            .AnyAsync(employer => employer.Id == employerId, cancellationToken);
+            .AnyAsync(e => e.Id == employerId, cancellationToken);
 
         if (!employerExists)
         {
             throw new UnauthorizedAccessException("Current user is not an employer.");
         }
 
-        var requestRows = await (
-            from request in _context.Requests.AsNoTracking()
-            join worker in _context.Workers.AsNoTracking()
-                on request.WorkerId equals worker.Id
-            join permission in _context.Permissions.AsNoTracking()
-                on request.Id equals permission.RequestId
-            join workerInfo in _context.WorkerInfos.AsNoTracking()
-                on permission.InfoId equals workerInfo.Id
-            where request.EmployerId == employerId
-            select new SentRequestRow
-            {
-                RequestId = request.Id,
-                WorkerId = worker.Id,
-                WorkerName = worker.Name,
-                WorkerEmail = worker.Email,
-                Reason = request.Reason,
-                RequestedAt = request.CreatedAt,
-                DataType = workerInfo.Desc,
-                PermissionStatus = permission.Status,
-                ExpiryDate = permission.ExpiryDate,
-                LastUpdatedAt = permission.LastUpdatedAt
-            }
-        ).ToListAsync(cancellationToken);
+        // Pull requests with permissions and both possible label sources
+        // (preset field via Permission.Field, or worker-created item via
+        // Permission.WorkerInfo). Pulling everything in a single query
+        // keeps the per-item resolution simple in memory.
+        var requests = await _context.Requests
+            .AsNoTracking()
+            .Include(r => r.Worker)
+            .Include(r => r.Permissions)
+                .ThenInclude(p => p.Field!)
+                    .ThenInclude(f => f.Category)
+            .Include(r => r.Permissions)
+                .ThenInclude(p => p.WorkerInfo!)
+                    .ThenInclude(wi => wi.Field!)
+                        .ThenInclude(f => f.Category)
+            .Where(r => r.EmployerId == employerId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
-
-        return requestRows
-            .GroupBy(row => row.RequestId)
-            .Select(group =>
-            {
-                var rows = group.ToList();
-
-                return new EmployerSentRequestDto
-                {
-                    RequestId = group.Key,
-                    WorkerId = rows.First().WorkerId,
-                    WorkerName = rows.First().WorkerName,
-                    WorkerEmail = rows.First().WorkerEmail,
-                    Reason = rows.First().Reason,
-                    RequestedAt = rows.First().RequestedAt,
-                    LastUpdatedAt = rows.Max(row => row.LastUpdatedAt),
-                    Status = GetRequestStatus(rows, now),
-                    RequestedDataTypes = rows
-                        .Select(row => row.DataType)
-                        .Distinct()
-                        .ToList()
-                };
-            })
-            .OrderByDescending(request => request.LastUpdatedAt)
-            .ToList();
+        return requests.Select(r => new EmployerSentRequestDto
+        {
+            RequestId = r.Id,
+            WorkerId = r.WorkerId,
+            WorkerName = r.Worker.Name,
+            WorkerEmail = r.Worker.Email,
+            Reason = r.Reason,
+            ExpiryDate = r.ExpiryDate,
+            CreatedAt = r.CreatedAt,
+            LastUpdatedAt = r.Permissions.Any()
+                ? (r.Permissions.Max(p => p.LastUpdatedAt) ?? r.CreatedAt)
+                : r.CreatedAt,
+            CustomRequest = r.CustomRequest,
+            CustomRequestStatus = r.CustomRequestStatus,
+            Items = r.Permissions.Select(BuildItem).ToList()
+        }).ToList();
     }
 
-    private static string GetRequestStatus(
-        List<SentRequestRow> rows,
-        DateTime now)
+    // Resolve label + category from either side of the dual-pointer permission.
+    private static EmployerSentRequestItemDto BuildItem(Permission p)
     {
-        if (rows.Count == 0)
+        if (p.Field != null)
         {
-            return "Unknown";
+            return new EmployerSentRequestItemDto
+            {
+                PermissionId = p.Id,
+                CategoryName = p.Field.Category?.CategoryName ?? "Unknown",
+                Label = p.Field.Label,
+                Status = p.Status,
+                IsCustom = false
+            };
         }
 
-        if (rows.All(row => row.PermissionStatus == PermissionStatus.Pending))
+        if (p.WorkerInfo != null)
         {
-            return "Pending";
+            var label = p.WorkerInfo.CustomLabel
+                        ?? p.WorkerInfo.Field?.Label
+                        ?? "Unknown";
+            var category = p.WorkerInfo.Field?.Category?.CategoryName
+                           ?? "OtherInformation";
+            return new EmployerSentRequestItemDto
+            {
+                PermissionId = p.Id,
+                CategoryName = category,
+                Label = label,
+                Status = p.Status,
+                IsCustom = p.WorkerInfo.CustomLabel != null
+            };
         }
 
-        if (rows.All(row => row.PermissionStatus == PermissionStatus.Rejected))
+        return new EmployerSentRequestItemDto
         {
-            return "Rejected";
-        }
-
-        if (rows.All(row =>
-            row.PermissionStatus == PermissionStatus.Approved &&
-            (!row.ExpiryDate.HasValue || row.ExpiryDate.Value > now)))
-        {
-            return "Approved";
-        }
-
-        if (rows.All(row =>
-            row.PermissionStatus == PermissionStatus.Approved &&
-            row.ExpiryDate.HasValue &&
-            row.ExpiryDate.Value <= now))
-        {
-            return "Expired";
-        }
-
-        return "Partial";
-    }
-
-    private class SentRequestRow
-    {
-        public Guid RequestId { get; set; }
-
-        public Guid WorkerId { get; set; }
-
-        public string WorkerName { get; set; } = string.Empty;
-
-        public string WorkerEmail { get; set; } = string.Empty;
-
-        public string Reason { get; set; } = string.Empty;
-
-        public DateTime RequestedAt { get; set; }
-
-        public string DataType { get; set; } = string.Empty;
-
-        public PermissionStatus PermissionStatus { get; set; }
-
-        public DateTime? ExpiryDate { get; set; }
-
-        public DateTime LastUpdatedAt { get; set; }
+            PermissionId = p.Id,
+            CategoryName = "Unknown",
+            Label = "Unknown",
+            Status = p.Status,
+            IsCustom = false
+        };
     }
 }

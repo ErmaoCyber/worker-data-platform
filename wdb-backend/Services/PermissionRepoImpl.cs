@@ -15,6 +15,12 @@ public class PermissionRepoImpl : IPermissionRepository
         _dbContext = dbContext;
     }
 
+    /// <summary>
+    /// Create one permission per WorkerInfo item under a request.
+    /// This still supports the old existing-info request flow.
+    /// For new preset field-first requests, a later employer-side update should create
+    /// permissions with field_id and info_id = null.
+    /// </summary>
     public async Task AddAllByRequestAsync(
         Request request,
         List<WorkerInfo> workerInfos,
@@ -26,6 +32,31 @@ public class PermissionRepoImpl : IPermissionRepository
         }
     }
 
+    /// <summary>
+    /// Create a permission linked to an existing worker_info row.
+    /// </summary>
+    public async Task AddOneByRequestAsync(
+        Request request,
+        WorkerInfo workerInfo,
+        CancellationToken cancellationToken = default)
+    {
+        var permission = new Permission
+        {
+            InfoId = workerInfo.Id,
+            FieldId = workerInfo.FieldId,
+            RequestId = request.Id,
+            WorkerId = workerInfo.WorkerId,
+            Status = PermissionStatus.Pending,
+            LastUpdatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.Permissions.Add(permission);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Persist permission changes.
+    /// </summary>
     public async Task<Permission> UpdateAsync(
         Guid permissionId,
         Permission permission,
@@ -35,59 +66,58 @@ public class PermissionRepoImpl : IPermissionRepository
             .FirstOrDefaultAsync(x => x.Id == permissionId, cancellationToken)
             ?? throw new KeyNotFoundException();
 
+        item.FieldId = permission.FieldId;
+        item.InfoId = permission.InfoId;
         item.Status = permission.Status;
         item.LastUpdatedAt = permission.LastUpdatedAt;
-        item.ExpiryDate = permission.ExpiryDate;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return item;
+        return await GetOneAsync(permissionId, cancellationToken);
     }
 
-    public Task<LinkedList<Permission>> GetAllByRequestIdAsync(
+    public async Task<List<Permission>> GetAllByRequestIdAsync(
         Guid requestId,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return await _dbContext.Permissions
+            .Where(x => x.RequestId == requestId)
+            .Include(p => p.Request)
+            .Include(p => p.Field)
+                .ThenInclude(f => f!.Category)
+            .Include(p => p.WorkerInfo)
+                .ThenInclude(w => w!.Field)
+                    .ThenInclude(f => f!.Category)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<Permission> GetOneAsync(
         Guid permissionId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _dbContext.Permissions
+        return await _dbContext.Permissions
+            .Include(p => p.Request)
+            .Include(p => p.Field)
+                .ThenInclude(f => f!.Category)
+            .Include(p => p.WorkerInfo)
+                .ThenInclude(w => w!.Field)
+                    .ThenInclude(f => f!.Category)
             .FirstOrDefaultAsync(x => x.Id == permissionId, cancellationToken)
             ?? throw new KeyNotFoundException();
-
-        return result;
     }
 
     public async Task<List<Permission>> GetAllByWorkerIdAsync(
         Guid workerId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _dbContext.Permissions
+        return await _dbContext.Permissions
             .Where(x => x.WorkerId == workerId)
+            .Include(p => p.Request)
+            .Include(p => p.Field)
+                .ThenInclude(f => f!.Category)
+            .Include(p => p.WorkerInfo)
+                .ThenInclude(w => w!.Field)
+                    .ThenInclude(f => f!.Category)
             .ToListAsync(cancellationToken);
-
-        return result;
-    }
-
-    public async Task AddOneByRequestAsync(
-        Request request,
-        WorkerInfo workerInfo,
-        CancellationToken cancellationToken = default)
-    {
-        var permission = new Permission
-        {
-            InfoId = workerInfo.Id,
-            RequestId = request.Id,
-            WorkerId = workerInfo.WorkerId,
-            Status = PermissionStatus.Pending
-        };
-
-        _dbContext.Permissions.Add(permission);
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

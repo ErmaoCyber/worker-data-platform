@@ -1,18 +1,30 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.DTOs;
+using wdb_backend.Models;
 
 namespace wdb_backend.Services;
 
 public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
 {
     private readonly AppDbContext _context;
+    private readonly ISupabaseStorageService _storage;
+    private readonly IMediator _mediator;
+    private readonly IBlockchainAuditService _audit;
 
-    public EmployerActiveAccessServiceImpl(AppDbContext context)
+    public EmployerActiveAccessServiceImpl(
+        AppDbContext context,
+        ISupabaseStorageService storage,
+        IMediator mediator,
+        IBlockchainAuditService audit)
     {
         _context = context;
+        _storage = storage;
+        _mediator = mediator;
+        _audit = audit;
     }
 
     public async Task<List<EmployerActiveAccessDto>> GetActiveAccessAsync(
@@ -21,7 +33,7 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
     {
         var employerExists = await _context.Employers
             .AsNoTracking()
-            .AnyAsync(employer => employer.Id == employerId, cancellationToken);
+            .AnyAsync(e => e.Id == employerId, cancellationToken);
 
         if (!employerExists)
         {
@@ -30,84 +42,137 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
 
         var now = DateTime.UtcNow;
 
-        var accessRows = await (
-            from request in _context.Requests.AsNoTracking()
-            join worker in _context.Workers.AsNoTracking()
-                on request.WorkerId equals worker.Id
-            join permission in _context.Permissions.AsNoTracking()
-                on request.Id equals permission.RequestId
-            join workerInfo in _context.WorkerInfos.AsNoTracking()
-                on permission.InfoId equals workerInfo.Id
-            where request.EmployerId == employerId
-                  && permission.Status == PermissionStatus.Approved
-                  && (!permission.ExpiryDate.HasValue || permission.ExpiryDate.Value > now)
-            select new ActiveAccessRow
+        var requests = await _context.Requests
+            .AsNoTracking()
+            .Include(r => r.Worker)
+            .Include(r => r.Permissions)
+                .ThenInclude(p => p.WorkerInfo!)
+                    .ThenInclude(wi => wi.Field!)
+                        .ThenInclude(f => f.Category)
+            .Where(r => r.EmployerId == employerId && r.ExpiryDate > now)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var result = new List<EmployerActiveAccessDto>();
+
+        foreach (var request in requests)
+        {
+            // Only approved permissions that already have a worker_info row attached.
+            // Pending / rejected / revoked rows do not appear in My Access.
+            var approvedPerms = request.Permissions
+                .Where(p => p.Status == PermissionStatus.Approved && p.WorkerInfo != null)
+                .ToList();
+            if (approvedPerms.Count == 0) continue;
+
+            var groups = approvedPerms
+                .Select(p => new
+                {
+                    Permission = p,
+                    CategoryName = p.WorkerInfo!.Field?.Category?.CategoryName
+                                   ?? "OtherInformation",
+                    Label = p.WorkerInfo.CustomLabel
+                            ?? p.WorkerInfo.Field?.Label
+                            ?? "Unknown",
+                    IsCustom = p.WorkerInfo.CustomLabel != null
+                })
+                .GroupBy(x => x.CategoryName)
+                .Select(g => new EmployerActiveAccessCategoryDto
+                {
+                    Name = g.Key,
+                    Items = g.Select(x => new EmployerActiveAccessItemDto
+                    {
+                        PermissionId = x.Permission.Id,
+                        Label = x.Label,
+                        Type = x.Permission.WorkerInfo!.Type,
+                        IsCustom = x.IsCustom
+                    }).ToList()
+                })
+                .ToList();
+
+            result.Add(new EmployerActiveAccessDto
             {
                 RequestId = request.Id,
-                WorkerId = worker.Id,
-                WorkerName = worker.Name,
-                WorkerEmail = worker.Email,
+                WorkerId = request.WorkerId,
+                WorkerName = request.Worker.Name,
+                WorkerEmail = request.Worker.Email,
                 Reason = request.Reason,
-                PermissionId = permission.Id,
-                DataType = workerInfo.Desc,
-                Value = workerInfo.Value,
-                GrantedAt = permission.LastUpdatedAt,
-                ExpiryDate = permission.ExpiryDate
-            }
-        ).ToListAsync(cancellationToken);
+                GrantedAt = approvedPerms.Max(p => p.LastUpdatedAt) ?? request.CreatedAt,
+                ExpiryDate = request.ExpiryDate,
+                Categories = groups
+            });
+        }
 
-        return accessRows
-            .GroupBy(row => row.RequestId)
-            .Select(group =>
-            {
-                var rows = group.ToList();
-
-                return new EmployerActiveAccessDto
-                {
-                    RequestId = group.Key,
-                    WorkerId = rows.First().WorkerId,
-                    WorkerName = rows.First().WorkerName,
-                    WorkerEmail = rows.First().WorkerEmail,
-                    Reason = rows.First().Reason,
-                    GrantedAt = rows.Max(row => row.GrantedAt),
-                    ExpiryDate = rows
-                        .Where(row => row.ExpiryDate.HasValue)
-                        .Select(row => row.ExpiryDate)
-                        .Min(),
-                    WorkerInfo = rows
-                        .Select(row => new EmployerActiveAccessInfoDto
-                        {
-                            PermissionId = row.PermissionId,
-                            DataType = row.DataType,
-                            Value = row.Value
-                        })
-                        .ToList()
-                };
-            })
-            .OrderByDescending(access => access.GrantedAt)
-            .ToList();
+        return result;
     }
 
-    private class ActiveAccessRow
+    public async Task<EmployerAccessViewResultDto> ViewAsync(
+        Guid employerId,
+        Guid permissionId,
+        CancellationToken cancellationToken = default)
     {
-        public Guid RequestId { get; set; }
+        var permission = await _context.Permissions
+            .AsNoTracking()
+            .Include(p => p.Request)
+            .Include(p => p.WorkerInfo)
+            .FirstOrDefaultAsync(p => p.Id == permissionId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Permission {permissionId} not found");
 
-        public Guid WorkerId { get; set; }
+        if (permission.Request.EmployerId != employerId)
+        {
+            throw new UnauthorizedAccessException("Permission does not belong to the current employer.");
+        }
 
-        public string WorkerName { get; set; } = string.Empty;
+        if (permission.Status != PermissionStatus.Approved)
+        {
+            throw new InvalidOperationException("Permission is not approved.");
+        }
 
-        public string WorkerEmail { get; set; } = string.Empty;
+        if (permission.Request.ExpiryDate <= DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("Permission has expired.");
+        }
 
-        public string Reason { get; set; } = string.Empty;
+        if (permission.WorkerInfo == null)
+        {
+            throw new InvalidOperationException("No data associated with this permission yet.");
+        }
 
-        public Guid PermissionId { get; set; }
+        var info = permission.WorkerInfo;
 
-        public string DataType { get; set; } = string.Empty;
+        await _mediator.Send(
+            new NotificationCommand(
+                EmployerId: permission.Request.EmployerId,
+                WorkerId: permission.WorkerId,
+                RequestId: permission.RequestId,
+                FieldLabel: null,
+                Type: NotificationType.DataAccessed),
+            cancellationToken);
 
-        public string Value { get; set; } = string.Empty;
+        await _audit.TryLogAsync(
+            permission.Request.EmployerId,
+            permission.WorkerId,
+            BlockchainAction.DataViewed,
+            cancellationToken);
 
-        public DateTime GrantedAt { get; set; }
+        if (info.Type == "file")
+        {
+            if (string.IsNullOrWhiteSpace(info.Value))
+            {
+                throw new InvalidOperationException("No file path stored for this item.");
+            }
+            var signed = await _storage.CreateSignedUrlAsync(info.Value, 900, cancellationToken);
+            return new EmployerAccessViewResultDto
+            {
+                Type = "file",
+                Url = signed.Url,
+                UrlExpiresAt = signed.ExpiresAt
+            };
+        }
 
-        public DateTime? ExpiryDate { get; set; }
+        return new EmployerAccessViewResultDto
+        {
+            Type = "text",
+            Value = info.Value
+        };
     }
 }

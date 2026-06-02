@@ -5,13 +5,18 @@ using wdb_backend.DTOs;
 
 namespace wdb_backend.Notification;
 
+/// <summary>
+/// Handles NotificationEvent: persists to DB then pushes a formatted
+/// message to the target worker's SignalR group.
+/// </summary>
 public class NotificationClientsHandler : INotificationHandler<NotificationEvent>
 {
     private readonly IHubContext<NotificationsHub> _hubContext;
     private readonly INotificationRepository _notificationRepo;
 
-    // inject IHubContext to send the message to the client; inject notificationRepo to save notification to the database
-    public NotificationClientsHandler(IHubContext<NotificationsHub> hubContext, INotificationRepository notificationRepo)
+    public NotificationClientsHandler(
+        IHubContext<NotificationsHub> hubContext,
+        INotificationRepository notificationRepo)
     {
         _hubContext = hubContext;
         _notificationRepo = notificationRepo;
@@ -19,22 +24,21 @@ public class NotificationClientsHandler : INotificationHandler<NotificationEvent
 
     public async Task Handle(NotificationEvent e, CancellationToken ct)
     {
-        // save the notification info to the database before notify (the field - is_read is default false)
+        // Persist the notification row using the new schema (single-recipient pattern).
         await _notificationRepo.AddAsync(new Models.Notification
         {
-            EmployerId = e.EmployerId,
-            WorkerId = e.WorkerId,
-            WorkerInfoId = e.WorkerInfoId,
-            Type = e.Type.ToString(),
-            CreateAt = e.CreateAt,
+            RecipientWorkerId = e.WorkerId,     // worker is the recipient
+            Type = e.Type,
+            RequestId = e.RequestId,
             IsRead = false
         }, ct);
 
-        // format the notification
+        // Format and push to the worker's SignalR group.
         var format = await _notificationRepo.FormatNotification(e, ct);
-
-        // send to specific worker only - to the method of NotificationInfo
-        // await _hubContext.Clients.Group(e.WorkerId.ToString()).SendAsync("NotificationInfo", $"{e.EmployerId}-{e.WorkerId}-{e.WorkerInfoId}-{e.Type}-{e.CreateAt}", ct);
-        await _hubContext.Clients.Group(e.WorkerId.ToString()).SendAsync("NotificationInfo", $"{format.EmployerName} {format.NotificationType.ToLower()}ed your {format.WorkInfoDesc} at {format.NotificationTime}", ct);
+        await _hubContext.Clients
+            .Group(e.WorkerId.ToString())
+            .SendAsync("NotificationInfo",
+                $"{format.EmployerName} {format.NotificationType.ToLower()}ed your {format.WorkInfoDesc} at {format.NotificationTime}",
+                ct);
     }
 }

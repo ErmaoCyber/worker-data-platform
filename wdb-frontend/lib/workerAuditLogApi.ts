@@ -2,11 +2,21 @@ export interface AuditLogRecord {
   action: string;
   actionLabel: string;
   userMessage: string;
+
   employerName: string;
+
+  requestId: string;
+  category: string;
+  categoryLabel: string;
+
+  permissionIds: string;
+  itemLabels: string[];
+
   employerAddress: string;
   workerAddress: string;
   transactionHash: string;
   blockHash: string | null;
+
   createdAt: string;
 }
 

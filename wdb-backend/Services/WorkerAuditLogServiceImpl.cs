@@ -5,60 +5,50 @@ using wdb_backend.Dtos;
 
 namespace wdb_backend.Services;
 
-/// <summary>
-/// Provides audit log data for the worker audit log page.
-/// This service connects the application worker ID with the worker's blockchain address,
-/// then reads blockchain logs and adds user-friendly context for the frontend.
-/// </summary>
 public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
 {
     private readonly AppDbContext _dbContext;
     private readonly IBlockchainService _blockchainService;
+    private readonly ILogger<WorkerAuditLogServiceImpl> _logger;
 
     public WorkerAuditLogServiceImpl(
         AppDbContext dbContext,
-        IBlockchainService blockchainService)
+        IBlockchainService blockchainService,
+        ILogger<WorkerAuditLogServiceImpl> logger)
     {
         _dbContext = dbContext;
         _blockchainService = blockchainService;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// Gets audit log records for a worker.
-    /// </summary>
-    /// <param name="workerId">
-    /// The worker ID from the application database.
-    /// </param>
-    /// <returns>
-    /// A response containing the worker ID and blockchain audit records.
-    /// </returns>
     public async Task<WorkerAuditLogResponseDto> GetWorkerAuditLogAsync(Guid workerId)
     {
-        // Find the worker first because the blockchain service needs the worker's blockchain address,
-        // not the database worker ID.
         var worker = await _dbContext.Workers
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.Id == workerId);
 
         if (worker == null)
-        {
             throw new KeyNotFoundException("Worker not found.");
-        }
 
-        // If the worker does not have a blockchain address yet, there are no on-chain logs to show.
         if (string.IsNullOrWhiteSpace(worker.BlockchainAddress))
+            return EmptyResponse(workerId);
+
+        List<Models.BlockchainTransactionResponse> blockchainRecords;
+
+        try
         {
-            return new WorkerAuditLogResponseDto
-            {
-                WorkerId = workerId,
-                Records = new List<AuditLogRecordDto>()
-            };
+            blockchainRecords = await _blockchainService.GetWorkerLogsAsync(worker.BlockchainAddress);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Blockchain audit log is unavailable for worker {WorkerId}. Returning empty audit log.",
+                workerId);
+
+            return EmptyResponse(workerId);
         }
 
-        var blockchainRecords = await _blockchainService.GetWorkerLogsAsync(worker.BlockchainAddress);
-
-        // Match employer blockchain addresses from the on-chain logs with employer records in the database.
-        // This lets the frontend show a company name instead of only a blockchain address.
         var employerAddresses = blockchainRecords
             .Select(record => record.EmployerAddress)
             .Where(address => !string.IsNullOrWhiteSpace(address))
@@ -88,16 +78,28 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
                     ? matchedEmployerName
                     : "Unknown company";
 
+                var categoryLabel = ToCategoryLabel(record.Category);
+                var itemLabels = UsesStructuredSummary(record)
+                    ? SplitStructuredSummary(record.ItemLabels)
+                    : SplitCsv(record.ItemLabels);
+
                 return new AuditLogRecordDto
                 {
                     Action = record.Action,
                     ActionLabel = GetActionLabel(record.Action),
-                    UserMessage = GetUserMessage(record.Action, employerName),
+                    UserMessage = GetUserMessage(record.Action, employerName, categoryLabel),
                     EmployerName = employerName,
+
+                    RequestId = record.RequestId,
+                    Category = record.Category,
+                    CategoryLabel = categoryLabel,
+                    PermissionIds = record.PermissionIds,
+                    ItemLabels = itemLabels,
+
                     EmployerAddress = record.EmployerAddress,
                     WorkerAddress = record.WorkerAddress,
                     TransactionHash = record.TxHash,
-                    BlockHash = null,
+                    BlockHash = record.BlockHash,
                     CreatedAt = record.Date
                 };
             })
@@ -111,9 +113,63 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
         };
     }
 
-    /// <summary>
-    /// Converts the raw blockchain action into a user-friendly label.
-    /// </summary>
+    private static WorkerAuditLogResponseDto EmptyResponse(Guid workerId)
+    {
+        return new WorkerAuditLogResponseDto
+        {
+            WorkerId = workerId,
+            Records = new List<AuditLogRecordDto>()
+        };
+    }
+
+    private static bool UsesStructuredSummary(Models.BlockchainTransactionResponse record)
+    {
+        return record.Action == "RequestReviewed"
+            || record.Category == "RequestAccess"
+            || record.ItemLabels.Contains('|');
+    }
+
+    private static List<string> SplitCsv(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return new List<string>();
+
+        return value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static List<string> SplitStructuredSummary(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return new List<string>();
+
+        return value
+            .Split("||", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+    }
+
+    private static string ToCategoryLabel(string category)
+    {
+        return category switch
+        {
+            "PersonalInformation" => "Personal Information",
+            "MedicalInformation" => "Medical Information",
+            "CareerInformation" => "Career Information",
+            "FinancialInformation" => "Financial Information",
+            "WorkplaceInformation" => "Workplace Information",
+            "OtherInformation" => "Other Information",
+            "RequestReview" => "Request Review",
+            "RequestAccess" => "Access Grant",
+            "" => "Information",
+            null => "Information",
+            _ => category
+        };
+    }
+
     private static string GetActionLabel(string action)
     {
         return action switch
@@ -123,34 +179,38 @@ public class WorkerAuditLogServiceImpl : IWorkerAuditLogService
             "PermissionRejected" => "Request Rejected",
             "DataViewed" => "Data Viewed",
             "PermissionRevoked" => "Access Revoked",
+            "RequestReviewed" => "Request Reviewed",
             _ => "Access Record"
         };
     }
 
-    /// <summary>
-    /// Creates a short explanation for normal users.
-    /// </summary>
-    private static string GetUserMessage(string action, string employerName)
+    private static string GetUserMessage(
+        string action,
+        string employerName,
+        string categoryLabel)
     {
         return action switch
         {
             "PermissionRequested" =>
-                $"{employerName} requested access to your information.",
+                $"{employerName} requested access to your {categoryLabel}.",
 
             "PermissionApproved" =>
-                $"You approved {employerName} to access your information.",
+                $"You approved {employerName} to access your {categoryLabel}.",
 
             "PermissionRejected" =>
-                $"You rejected {employerName}'s request to access your information.",
+                $"You rejected {employerName}'s request for your {categoryLabel}.",
 
             "DataViewed" =>
-                $"{employerName} viewed information you had approved.",
+                $"{employerName} viewed your {categoryLabel}.",
 
             "PermissionRevoked" =>
-                $"You removed {employerName}'s access to your information.",
+                $"You revoked {employerName}'s access.",
+
+            "RequestReviewed" =>
+                $"You reviewed {employerName}'s data access request.",
 
             _ =>
-                $"An access-related action involving {employerName} was recorded."
+                $"An access-related action involving {employerName} and your {categoryLabel} was recorded."
         };
     }
 }
