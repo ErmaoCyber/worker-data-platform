@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using wdb_backend.Abstractions;
+using wdb_backend.Common;
 using wdb_backend.DTOs;
 
 namespace wdb_backend.Controllers;
@@ -155,6 +156,6 @@ public class NotificationController : ControllerBase
             false,
             ct);
 
-        return Ok(result);
+        return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(result));
     }
 }
