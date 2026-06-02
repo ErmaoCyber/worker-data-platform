@@ -1,6 +1,5 @@
 'use client';
 
-// Worker requests: view, approve, or reject employer data access requests
 import { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -10,59 +9,61 @@ import ActiveAccessTab from './ActiveAccessTab';
 interface TabProps {
   id: string;
   label: string;
-  children?: ReactNode;
+  children: ReactNode;
 }
 
 export default function Page() {
   const router = useRouter();
-
-  // Read auth state from AuthContext
-  const { token, userId, role, isAuthReady } = useAuth();
+  const { token, role, isAuthReady } = useAuth();
 
   const [activeTab, setActiveTab] = useState<string>('active-request');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    // Wait until AuthContext finishes restoring auth data from localStorage
-    if (!isAuthReady) {
-      return;
-    }
+    if (!isAuthReady) return;
 
-    // Only logged-in workers can access this page
-    if (!token || !userId || role !== 'worker') {
+    if (!token || role !== 'worker') {
       router.push('/login');
-      return;
     }
-  }, [isAuthReady, token, userId, role, router]);
+  }, [isAuthReady, token, role, router]);
 
   if (!isAuthReady) {
     return (
-      <main className="p-8">
-        <p className="text-gray-500">Loading data access...</p>
+      <main className="min-h-screen bg-slate-50 px-8 py-8">
+        <p className="text-sm text-slate-500">Loading data access...</p>
       </main>
     );
   }
 
-  if (!token || !userId || role !== 'worker') {
+  if (!token || role !== 'worker') {
     return null;
   }
+
+  const handleChanged = () => {
+    setRefreshKey((current) => current + 1);
+  };
 
   const tabs: TabProps[] = [
     {
       id: 'active-request',
-      label: 'Active Request',
+      label: 'Active Requests',
       children: (
-        <div>
-          <ActiveRequestTab />
-        </div>
+        <ActiveRequestTab
+          token={token}
+          refreshKey={refreshKey}
+          onChanged={handleChanged}
+        />
       ),
     },
     {
       id: 'active-access',
       label: 'Active Access',
       children: (
-        <div>
-          <ActiveAccessTab workerId={userId ?? ''} />
-        </div>
+        <ActiveAccessTab
+          token={token}
+          refreshKey={refreshKey}
+          onChanged={handleChanged}
+        />
       ),
     },
   ];
@@ -70,33 +71,37 @@ export default function Page() {
   const activeContent = tabs.find((tab) => tab.id === activeTab)?.children;
 
   return (
-    <main className="p-8">
-      <div>
-        <h1 className="text-2xl font-semibold mb-6 text-gray-900">
-          Data Access
-        </h1>
-      </div>
+    <main className="min-h-screen bg-slate-50 px-8 py-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header>
+          <p className="text-sm font-medium text-slate-500">Worker portal</p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+            Data Access
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Review company requests, add requested information when needed, and
+            revoke access you no longer want to share.
+          </p>
+        </header>
 
-      <div className="flex border-b border-gray-200">
-        {tabs.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`
-                            px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer
-                            ${activeTab === id
-                ? 'border-gray-900 text-gray-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-              }
-                        `}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        <div className="border-b border-slate-200">
+          <div className="flex gap-6">
+            {tabs.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`border-b-2 px-1 pb-3 text-sm font-semibold transition-colors ${activeTab === id
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="mt-6">
-        {activeContent}
+        <section>{activeContent}</section>
       </div>
     </main>
   );

@@ -1,7 +1,8 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using wdb_backend.Abstractions;
-using wdb_backend.Common;
 using wdb_backend.DTOs;
 
 namespace wdb_backend.Controllers;
@@ -11,65 +12,149 @@ namespace wdb_backend.Controllers;
 [Route("api/notification")]
 public class NotificationController : ControllerBase
 {
+    private readonly IMediator _mediator;
     private readonly INotificationService _notificationService;
 
-    public NotificationController(INotificationService notificationService)
+    public NotificationController(
+        IMediator mediator,
+        INotificationService notificationService)
     {
+        _mediator = mediator;
         _notificationService = notificationService;
     }
 
-    /*
-    // Demo trigger endpoints from the old design (frontend would POST here to fire a notification).
-    // Notifications are now produced server-side by business actions
-    // (employer creating a request, employer viewing data, etc.), so these manual
-    // trigger endpoints are disabled. Kept here for reference.
-    [HttpPost("access")]
-    public async Task<IActionResult> AccessInfo([FromBody] NotificationInfo notiInfo, CancellationToken ct)
+    private Guid GetCurrentUserId()
     {
-        await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, LegacyNotificationType.Access), ct);
-        return Ok(new { message = "already notified" });
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)
+                 ?? User.FindFirst("sub");
+
+        if (claim == null)
+            throw new UnauthorizedAccessException("User ID not found in token.");
+
+        return Guid.Parse(claim.Value);
     }
 
-    [HttpPost("request")]
-    public async Task<IActionResult> RequestInfo([FromBody] NotificationInfo notiInfo, CancellationToken ct)
+    /// <summary>
+    /// Get notifications for the current worker.
+    /// Example:
+    /// GET /api/notification/worker/me
+    /// GET /api/notification/worker/me?isRead=false
+    /// </summary>
+    [HttpGet("worker/me")]
+    public async Task<ActionResult> GetMyWorkerNotifications(
+        [FromQuery] bool? isRead,
+        CancellationToken ct)
     {
-        await _mediator.Send(new NotificationCommand(notiInfo.EmployerId, notiInfo.WorkerId, notiInfo.WorkerInfoId, LegacyNotificationType.Request), ct);
-        return Ok(new { message = "already notified" });
-    }
-    */
+        try
+        {
+            var workerId = GetCurrentUserId();
 
-    // Mark a notification as read.
-    [HttpPatch("{notificationId}")]
-    public async Task<IActionResult> CheckNotification(Guid notificationId, CancellationToken ct)
+            var result = await _notificationService.GetFormattedWorkerAsync(
+                workerId,
+                isRead,
+                ct);
+
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get notifications for the current employer.
+    /// Example:
+    /// GET /api/notification/employer/me
+    /// GET /api/notification/employer/me?isRead=false
+    /// </summary>
+    [HttpGet("employer/me")]
+    public async Task<ActionResult> GetMyEmployerNotifications(
+        [FromQuery] bool? isRead,
+        CancellationToken ct)
+    {
+        try
+        {
+            var employerId = GetCurrentUserId();
+
+            var result = await _notificationService.GetFormattedEmployerAsync(
+                employerId,
+                isRead,
+                ct);
+
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Mark a notification as read.
+    /// </summary>
+    [HttpPatch("{notificationId}/read")]
+    public async Task<IActionResult> MarkAsRead(
+        Guid notificationId,
+        CancellationToken ct)
     {
         var success = await _notificationService.UpdateStatus(notificationId, ct);
-        if (!success) return NotFound(new { message = "Notification not found" });
+
+        if (!success)
+            return NotFound(new { message = "Notification not found." });
+
+        return Ok(new { message = "Notification marked as read." });
+    }
+
+    // ── Legacy endpoints kept for compatibility ────────────────────────────
+
+    /// <summary>
+    /// Legacy mark-as-read endpoint.
+    /// </summary>
+    [HttpPatch("{notificationId}")]
+    public async Task<IActionResult> CheckNotification(
+        Guid notificationId,
+        CancellationToken ct)
+    {
+        var success = await _notificationService.UpdateStatus(notificationId, ct);
+
+        if (!success)
+            return NotFound(new { message = "Notification not found." });
+
         return Ok(new { message = "already read" });
     }
 
-    // All notifications for a worker.
+    /// <summary>
+    /// Legacy worker notification endpoint.
+    /// Prefer GET /api/notification/worker/me.
+    /// </summary>
     [HttpGet("all/{workerId}")]
-    public async Task<ActionResult<ApiResponse<IList<NotificationFormatComponent>>>> GetAll(
+    public async Task<ActionResult> GetAllNotifications(
         Guid workerId,
         CancellationToken ct)
     {
-        var notificationList = await _notificationService.GetFormattedAsync(workerId, null, ct);
-        return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
+        var result = await _notificationService.GetFormattedAsync(
+            workerId,
+            null,
+            ct);
+
+        return Ok(result);
     }
 
-    // Unread notifications for a worker.
+    /// <summary>
+    /// Legacy worker unread notification endpoint.
+    /// Prefer GET /api/notification/worker/me?isRead=false.
+    /// </summary>
     [HttpGet("unread/{workerId}")]
-    public async Task<IActionResult> GetUnread(Guid workerId, CancellationToken ct)
+    public async Task<ActionResult> GetUnreadNotifications(
+        Guid workerId,
+        CancellationToken ct)
     {
-        var notificationList = await _notificationService.GetFormattedAsync(workerId, false, ct);
-        return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
-    }
+        var result = await _notificationService.GetFormattedAsync(
+            workerId,
+            false,
+            ct);
 
-    // Read notifications for a worker.
-    [HttpGet("read/{workerId}")]
-    public async Task<IActionResult> GetRead(Guid workerId, CancellationToken ct)
-    {
-        var notificationList = await _notificationService.GetFormattedAsync(workerId, true, ct);
-        return Ok(ApiResponse<IList<NotificationFormatComponent>>.Ok(notificationList, "OK"));
+        return Ok(result);
     }
 }

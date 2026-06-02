@@ -277,4 +277,13 @@ docker-compose.local.yml
 docker-compose.*.local.yml
 docker-compose.blockchain.local.yml
 
+
+# Hardhat generated files
+wdb-blockchain/cache/
+wdb-blockchain/typechain-types/
+
+# Optional: Hardhat compiled artifacts
+# Only ignore this if your team agrees to generate artifacts locally
+# wdb-blockchain/artifacts/
+
 # End of file

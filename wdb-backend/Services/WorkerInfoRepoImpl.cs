@@ -2,14 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
 using wdb_backend.Data;
-// using wdb_backend.Enums;  // removed: WorkerInfoCategory enum deleted in new schema
 using wdb_backend.Models;
 
 namespace wdb_backend.Services;
 
-
-
-// this class is define the implementation of worker info repository.
 public class WorkerInfoRepoImpl : IWorkerInfoRepository
 {
     private readonly AppDbContext _context;
@@ -19,106 +15,411 @@ public class WorkerInfoRepoImpl : IWorkerInfoRepository
         _context = context;
     }
 
-    public Task<WorkerInfo> GetOneAsync(Guid workerId, Guid wordInfoId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Return one worker_info row owned by the worker.
+    /// Includes Field and Category so the caller can build display labels.
+    /// </summary>
+    public async Task<WorkerInfo> GetOneAsync(
+        Guid workerId,
+        Guid workerInfoId,
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return await _context.WorkerInfos
+            .Include(w => w.Field)
+                .ThenInclude(f => f!.Category)
+            .FirstOrDefaultAsync(
+                w => w.WorkerId == workerId && w.Id == workerInfoId,
+                cancellationToken)
+            ?? throw new KeyNotFoundException();
     }
 
-    public async Task<List<WorkerInfo>> GetAllAsync(Guid workerId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Return all saved worker_info rows for a worker.
+    /// This does not include unsaved preset placeholders.
+    /// </summary>
+    public async Task<List<WorkerInfo>> GetAllAsync(
+        Guid workerId,
+        CancellationToken cancellationToken = default)
     {
-        var workerInfoList = await _context.WorkerInfos.Where(w => w.WorkerId == workerId).ToListAsync(cancellationToken);
-        return workerInfoList;
+        return await _context.WorkerInfos
+            .Where(w => w.WorkerId == workerId)
+            .Include(w => w.Field)
+                .ThenInclude(f => f!.Category)
+            .OrderBy(w => w.Field != null ? w.Field.Category.CategoryName : "OtherInformation")
+            .ThenBy(w => w.Field != null ? w.Field.Label : w.CustomLabel)
+            .ToListAsync(cancellationToken);
     }
 
-
-
-    // This method receive a workerid and return all the worker info related to paramenter workerid.
-    // the parameter workerid is the key in the database, cacellation token is to cancale the request if user pasue the request.
-    // the return type is a hashset.
-    public async Task<HashSet<WorkerInfo>> GetAllAsyncHash(Guid workerId, CancellationToken cancellationToken = default)
+    public async Task<HashSet<WorkerInfo>> GetAllAsyncHash(
+        Guid workerId,
+        CancellationToken cancellationToken = default)
     {
-        var workerInfos = await _context.WorkerInfos
-           .Where(w => w.WorkerId == workerId)
-           .ToListAsync<WorkerInfo>(cancellationToken);// use .tolistasync to transform data from database to list of workerinfo that match c# grammar.
-
-        return workerInfos.ToHashSet(); // transform list to hashset.
+        var list = await GetAllAsync(workerId, cancellationToken);
+        return list.ToHashSet();
     }
 
-
-
-    // this method is to add a worker info to database, worker info is the parameter that use want to add.
-    public Task AddOneAsync(Guid workerId, WorkerInfo workerInfo, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Insert a new worker_info row.
+    /// In the worker profile flow this is mainly used for custom OtherInformation fields.
+    /// </summary>
+    public async Task AddOneAsync(
+        Guid workerId,
+        WorkerInfo workerInfo,
+        CancellationToken cancellationToken = default)
     {
-        workerInfo.WorkerId = workerId;// get the user input info.
-        _context.WorkerInfos.Add(workerInfo); // target the specific table in db and add passed info to the table.
-        return _context.SaveChangesAsync(cancellationToken);// implement the change in db and keep the change until request finished/cancelled.
-    }
+        workerInfo.WorkerId = workerId;
 
-
-
-    // this method is to make the user's update operation can be saved in db.
-    // the return type is worker info.
-    public async Task<WorkerInfo> UpdateAsync(Guid workerId, WorkerInfo workerInfo, CancellationToken cancellationToken = default)
-    {
-        // check if the record exist in db by workerid and desc, if exist then update the value,if not exist then add a new record in db.
-        // Old: matched by free-text Desc; new schema uses FieldId. Only handles preset fields here;
-        // custom_label rows will be handled by the proper update flow built later.
-        // var existing = await _context.WorkerInfos
-        //     .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.Desc == workerInfo.Desc, cancellationToken);
-        var existing = await _context.WorkerInfos
-            .FirstOrDefaultAsync(w => w.WorkerId == workerId && w.FieldId == workerInfo.FieldId, cancellationToken);
-
-        if (existing != null)
+        if (workerInfo.FieldId.HasValue)
         {
-            // if the record exist, then updat the vaule and save the change in db.
-            existing.Value = workerInfo.Value;
-            // existing.Category = workerInfo.Category;  // Category removed from WorkerInfo; derived via Field.Category
-            existing.UpdatedAt = DateTime.UtcNow; // update the updated time to current time.
-            await _context.SaveChangesAsync(cancellationToken);
-            return existing;
+            await PreparePresetForInsertAsync(workerInfo, cancellationToken);
         }
         else
         {
-            // if it is not exist, then add a new record
-            workerInfo.WorkerId = workerId;
-            workerInfo.Id = Guid.NewGuid();  // generate a new id for the new record
-            _context.WorkerInfos.Add(workerInfo);
-            await _context.SaveChangesAsync(cancellationToken);
-            return workerInfo;
+            await PrepareCustomForInsertAsync(workerId, workerInfo, cancellationToken);
         }
+
+        _context.WorkerInfos.Add(workerInfo);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
-    // this method is to delete the whole worker info in db. but ui have not define so this method have not done.
-    public Task<WorkerInfo> DeleteAsync(Guid workerId, Guid wordInfoId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Update worker_info.
+    /// Preset fields are upserted by WorkerId + FieldId.
+    /// Custom fields are updated by WorkerId + Id.
+    /// </summary>
+    public async Task<WorkerInfo> UpdateAsync(
+        Guid workerId,
+        WorkerInfo workerInfo,
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        if (workerInfo.FieldId.HasValue)
+        {
+            return await UpsertPresetFieldAsync(workerId, workerInfo, cancellationToken);
+        }
+
+        return await UpdateCustomFieldAsync(workerId, workerInfo, cancellationToken);
     }
 
-    public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Delete a custom worker_info row.
+    /// Preset fields cannot be deleted.
+    /// If there is no permission history, the row is physically deleted.
+    /// If there is active approved access, deletion is blocked until the worker revokes access.
+    /// If there is any non-active permission history, deletion is blocked to preserve audit history.
+    /// </summary>
+    public async Task<WorkerInfo> DeleteAsync(
+        Guid workerId,
+        Guid workerInfoId,
+        CancellationToken cancellationToken = default)
     {
-        var availableInfos = await _context.WorkerInfos
-      .Include(w => w.Permissions).ThenInclude(p => p.Request)
-      .Where(w => w.WorkerId == workerId &&
-                  !w.Permissions.Any(p => p.Request.EmployerId == employerId &&
-                                          (p.Status == PermissionStatus.Pending ||
-                                           p.Status == PermissionStatus.Approved)))
-      .ToListAsync(cancellationToken);
+        var existing = await _context.WorkerInfos
+            .Include(w => w.Permissions)
+            .FirstOrDefaultAsync(
+                w => w.Id == workerInfoId && w.WorkerId == workerId,
+                cancellationToken)
+            ?? throw new KeyNotFoundException();
 
-        return availableInfos;
+        if (existing.FieldId.HasValue)
+            throw new InvalidOperationException("PRESET_FIELD_CANNOT_BE_DELETED");
+
+        var hasActivePermission = existing.Permissions
+            .Any(p => p.Status == PermissionStatus.Approved);
+
+        if (hasActivePermission)
+            throw new InvalidOperationException("ACTIVE_PERMISSION_EXISTS");
+
+        var hasPermissionHistory = existing.Permissions.Any();
+
+        if (hasPermissionHistory)
+            throw new InvalidOperationException("PERMISSION_HISTORY_EXISTS");
+
+        _context.WorkerInfos.Remove(existing);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return existing;
     }
 
-
-    public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(Guid workerId, Guid employerId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Return all preset fields merged with the worker's saved worker_info rows.
+    /// Preset fields with no saved value are returned as placeholders.
+    /// Custom fields are appended under OtherInformation.
+    /// </summary>
+    public async Task<List<WorkerInfo>> GetAllWithPresetsAsync(
+        Guid workerId,
+        CancellationToken cancellationToken = default)
     {
-        var requestedInfos = await _context.WorkerInfos
-            .Include(w => w.Permissions).ThenInclude(p => p.Request)
-            .Where(w => w.WorkerId == workerId &&
-                        w.Permissions.Any(p => p.Request.EmployerId == employerId &&
-                                               (p.Status == PermissionStatus.Pending ||
-                                                p.Status == PermissionStatus.Approved)))
+        var allPresetFields = await _context.Fields
+            .Include(f => f.Category)
+            .OrderBy(f => f.Category.CategoryName)
+            .ThenBy(f => f.Label)
             .ToListAsync(cancellationToken);
 
-        return requestedInfos;
+        var existingRows = await _context.WorkerInfos
+            .Where(w => w.WorkerId == workerId)
+            .Include(w => w.Field)
+                .ThenInclude(f => f!.Category)
+            .ToListAsync(cancellationToken);
+
+        var existingByFieldId = existingRows
+            .Where(w => w.FieldId.HasValue)
+            .ToDictionary(w => w.FieldId!.Value);
+
+        var result = new List<WorkerInfo>();
+
+        foreach (var field in allPresetFields)
+        {
+            if (existingByFieldId.TryGetValue(field.Id, out var existingRow))
+            {
+                result.Add(existingRow);
+                continue;
+            }
+
+            // Placeholder only. This row is not saved in the database yet.
+            result.Add(new WorkerInfo
+            {
+                Id = Guid.Empty,
+                WorkerId = workerId,
+                FieldId = field.Id,
+                Field = field,
+                CustomLabel = null,
+                Type = field.AllowedType,
+                Value = null
+            });
+        }
+
+        var customFields = existingRows
+            .Where(w => !w.FieldId.HasValue)
+            .OrderBy(w => w.CustomLabel)
+            .ToList();
+
+        result.AddRange(customFields);
+
+        return result;
     }
 
+    /// <summary>
+    /// Return requestable worker fields for this employer.
+    /// Includes:
+    /// - all preset fields, even if the worker has not filled them in yet
+    /// - existing custom fields created by this worker
+    ///
+    /// Excludes fields that this employer already has pending or approved access to.
+    /// </summary>
+    public async Task<List<WorkerInfo>> GetEffectiveWorkerInfo(
+        Guid workerId,
+        Guid employerId,
+        CancellationToken cancellationToken = default)
+    {
+        var allItems = await GetAllWithPresetsAsync(workerId, cancellationToken);
+
+        var blockingPermissions = await _context.Permissions
+            .Include(p => p.Request)
+            .Where(p =>
+                p.WorkerId == workerId &&
+                p.Request.EmployerId == employerId &&
+                (p.Status == PermissionStatus.Pending ||
+                 p.Status == PermissionStatus.Approved))
+            .ToListAsync(cancellationToken);
+
+        var result = allItems
+            .Where(item =>
+            {
+                if (item.FieldId.HasValue)
+                {
+                    return !blockingPermissions.Any(p => p.FieldId == item.FieldId.Value);
+                }
+
+                return !blockingPermissions.Any(p => p.InfoId == item.Id);
+            })
+            .OrderBy(w => w.Field != null ? w.Field.Category.CategoryName : "OtherInformation")
+            .ThenBy(w => w.Field != null ? w.Field.Label : w.CustomLabel)
+            .ToList();
+
+        return result;
+    }
+
+    /// <summary>
+    /// Return worker fields already requested by this employer.
+    /// Includes preset placeholders where the permission only has field_id.
+    /// </summary>
+    public async Task<List<WorkerInfo>> GetRequestedWorkerInfos(
+        Guid workerId,
+        Guid employerId,
+        CancellationToken cancellationToken = default)
+    {
+        var allItems = await GetAllWithPresetsAsync(workerId, cancellationToken);
+
+        var requestedPermissions = await _context.Permissions
+            .Include(p => p.Request)
+            .Where(p =>
+                p.WorkerId == workerId &&
+                p.Request.EmployerId == employerId &&
+                (p.Status == PermissionStatus.Pending ||
+                 p.Status == PermissionStatus.Approved))
+            .ToListAsync(cancellationToken);
+
+        var result = allItems
+            .Where(item =>
+            {
+                if (item.FieldId.HasValue)
+                {
+                    return requestedPermissions.Any(p => p.FieldId == item.FieldId.Value);
+                }
+
+                return requestedPermissions.Any(p => p.InfoId == item.Id);
+            })
+            .OrderBy(w => w.Field != null ? w.Field.Category.CategoryName : "OtherInformation")
+            .ThenBy(w => w.Field != null ? w.Field.Label : w.CustomLabel)
+            .ToList();
+
+        return result;
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Prepare a preset worker_info row before insert.
+    /// Type must come from fields.allowed_type.
+    /// </summary>
+    private async Task PreparePresetForInsertAsync(
+        WorkerInfo workerInfo,
+        CancellationToken cancellationToken)
+    {
+        var field = await _context.Fields
+            .FirstOrDefaultAsync(f => f.Id == workerInfo.FieldId, cancellationToken)
+            ?? throw new KeyNotFoundException("FIELD_NOT_FOUND");
+
+        workerInfo.CustomLabel = null;
+        workerInfo.Type = field.AllowedType;
+        workerInfo.UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Prepare a custom worker_info row before insert.
+    /// Custom label must be unique per worker.
+    /// </summary>
+    private async Task PrepareCustomForInsertAsync(
+        Guid workerId,
+        WorkerInfo workerInfo,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(workerInfo.CustomLabel))
+            throw new ArgumentException("CUSTOM_LABEL_REQUIRED");
+
+        workerInfo.CustomLabel = workerInfo.CustomLabel.Trim();
+
+        var type = workerInfo.Type.Trim().ToLowerInvariant();
+
+        if (type != "text" && type != "file")
+            throw new ArgumentException("INVALID_WORKER_INFO_TYPE");
+
+        workerInfo.Type = type;
+
+        var duplicateExists = await _context.WorkerInfos
+            .AnyAsync(
+                w => w.WorkerId == workerId &&
+                     w.CustomLabel != null &&
+                     w.CustomLabel.ToLower() == workerInfo.CustomLabel.ToLower(),
+                cancellationToken);
+
+        if (duplicateExists)
+            throw new InvalidOperationException("CUSTOM_LABEL_EXISTS");
+
+        workerInfo.FieldId = null;
+        workerInfo.UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Fill or update a preset field.
+    /// If the worker_info row does not exist yet, create it using fields.allowed_type.
+    /// </summary>
+    private async Task<WorkerInfo> UpsertPresetFieldAsync(
+        Guid workerId,
+        WorkerInfo input,
+        CancellationToken cancellationToken)
+    {
+        var field = await _context.Fields
+            .Include(f => f.Category)
+            .FirstOrDefaultAsync(f => f.Id == input.FieldId, cancellationToken)
+            ?? throw new KeyNotFoundException("FIELD_NOT_FOUND");
+
+        var existing = await _context.WorkerInfos
+            .Include(w => w.Field)
+                .ThenInclude(f => f!.Category)
+            .FirstOrDefaultAsync(
+                w => w.WorkerId == workerId && w.FieldId == input.FieldId,
+                cancellationToken);
+
+        if (existing != null)
+        {
+            existing.Value = input.Value;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        var created = new WorkerInfo
+        {
+            WorkerId = workerId,
+            FieldId = field.Id,
+            Field = field,
+            CustomLabel = null,
+            Type = field.AllowedType,
+            Value = input.Value,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.WorkerInfos.Add(created);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return created;
+    }
+
+    /// <summary>
+    /// Update a custom field.
+    /// Type is not updated because it is immutable after creation.
+    /// </summary>
+    private async Task<WorkerInfo> UpdateCustomFieldAsync(
+        Guid workerId,
+        WorkerInfo input,
+        CancellationToken cancellationToken)
+    {
+        var existing = await _context.WorkerInfos
+            .Include(w => w.Field)
+                .ThenInclude(f => f!.Category)
+            .FirstOrDefaultAsync(
+                w => w.WorkerId == workerId &&
+                     w.Id == input.Id &&
+                     w.FieldId == null,
+                cancellationToken)
+            ?? throw new KeyNotFoundException();
+
+        if (input.CustomLabel != null)
+        {
+            if (string.IsNullOrWhiteSpace(input.CustomLabel))
+                throw new ArgumentException("CUSTOM_LABEL_REQUIRED");
+
+            var newLabel = input.CustomLabel.Trim();
+
+            var duplicateExists = await _context.WorkerInfos
+                .AnyAsync(
+                    w => w.WorkerId == workerId &&
+                         w.Id != existing.Id &&
+                         w.CustomLabel != null &&
+                         w.CustomLabel.ToLower() == newLabel.ToLower(),
+                    cancellationToken);
+
+            if (duplicateExists)
+                throw new InvalidOperationException("CUSTOM_LABEL_EXISTS");
+
+            existing.CustomLabel = newLabel;
+        }
+
+        existing.Value = input.Value;
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return existing;
+    }
 }

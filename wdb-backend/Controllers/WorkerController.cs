@@ -7,9 +7,7 @@ using System.Security.Claims;
 
 namespace wdb_backend.Controllers;
 
-/// <summary>
-/// API controller for managing worker-related operations.
-/// </summary>
+/// <summary>API controller for worker-related operations.</summary>
 [ApiController]
 [Route("api/[controller]")]
 public class WorkerController : ControllerBase
@@ -34,130 +32,63 @@ public class WorkerController : ControllerBase
         _activeAccessService = activeAccessService;
     }
 
-    [HttpGet("{workerId}/permissions")]
-    public async Task<ActionResult<List<Permission>>> GetPermissions(Guid workerId)
-    {
-        var result = await _permissionService.GetAllByWorkerIdAsync(workerId, 0);
-
-        if (result == null)
-        {
-            return NotFound(new { error = "WORKER_NOT_FOUND" });
-        }
-
-        return Ok(result);
-    }
-
-    [HttpGet("{workerId}/requests")]
-    public async Task<ActionResult<Request>> GetRequestReason(Guid requestId)
-    {
-        var result = await _requestService.GetByRequestIdAsync(requestId);
-
-        if (result == null)
-        {
-            return NotFound(new { error = "REQUEST_NOT_FOUND" });
-        }
-
-        return Ok(result);
-    }
-
-    [HttpGet("{workerId}/info")]
-    public async Task<ActionResult<Request>> GetAllWorkerInfo(Guid workerId)
-    {
-        var result = await _workerInfoService.GetAllAsync(workerId);
-
-        if (result == null)
-        {
-            return NotFound(new { error = "WORKER_NOT_FOUND" });
-        }
-
-        return Ok(result);
-    }
+    // ── Nested response types ─────────────────────────────────────────────
 
     public class FieldResponse
     {
         public required string Id { get; set; }
-
         public required string Label { get; set; }
-
         public required bool Checked { get; set; } = false;
     }
 
     public class RequestRowResponse
     {
         public required string Id { get; set; }
-
         public required string Company { get; set; }
-
         public required string Date { get; set; }
-
         public required List<FieldResponse> ListedInfo { get; set; }
         public required List<FieldResponse> UnlistedInfo { get; set; }
-
         public required string Reason { get; set; }
     }
 
-    [Authorize]
-    [HttpGet("rows")]
-    public async Task<ActionResult> GetRows()
+    // ── Endpoints ─────────────────────────────────────────────────────────
+
+    /// <summary>Get pending permissions for a worker.</summary>
+    [HttpGet("{workerId}/permissions")]
+    public async Task<ActionResult<List<Permission>>> GetPermissions(Guid workerId)
     {
-        var workerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var result = await _permissionService.GetAllByWorkerIdAsync(workerId, 0);
+        if (result == null) return NotFound(new { error = "WORKER_NOT_FOUND" });
+        return Ok(result);
+    }
 
-        if (workerId == null)
-        {
-            return Unauthorized();
-        }
-
-        var workerGuid = Guid.Parse(workerId);
-
-        var requests = await _requestService.GetAllByWorkerIdAsync(workerGuid);
-        var workerInfo = await _workerInfoService.GetAllAsync(workerGuid);
-        var permissions = await _permissionService.GetAllByWorkerIdAsync(workerGuid, 0);
-        var groupedPermissions = permissions.GroupBy(permission => permission.RequestId);
-
-        var employers = await _employerService.GetDistinctEmployers();
-        var employerMap = employers.ToDictionary(employer => employer.Id);
+    /// <summary>Get all requests for a worker, with grouped field info.</summary>
+    [HttpGet("{workerId}/requests")]
+    public async Task<ActionResult> GetRequests(Guid workerId)
+    {
+        var requests = await _requestService.GetAllByWorkerIdAsync(workerId);
+        var permissions = await _permissionService.GetAllByWorkerIdAsync(workerId);
+        var workerInfos = await _workerInfoService.GetAllAsync(workerId);
 
         var rows = new List<RequestRowResponse>();
 
-        foreach (var group in groupedPermissions)
+        foreach (var request in requests)
         {
-            var request = requests.FirstOrDefault(requestItem => requestItem.Id == group.Key);
-
-            if (request == null)
-            {
-                continue;
-            }
-
-            employerMap.TryGetValue(request.EmployerId, out var employer);
+            var employer = await _employerService.GetEmployerInfoAsync(request.EmployerId);
+            var permsForRequest = permissions.Where(p => p.RequestId == request.Id).ToList();
 
             var listedInfos = new List<FieldResponse>();
             var unlistedInfos = new List<FieldResponse>();
-            foreach (var p in group)
-            {
-                var info = workerInfo.FirstOrDefault(w => w.Id == p.InfoId);
-                if (info?.Value != null)
-                {
-                    listedInfos.Add(new FieldResponse
-                    {
-                        Id = p.Id.ToString(),
-                        // TODO: Desc removed; should resolve via WorkerInfo.Field.Label after proper Include.
-                        // Label = info.Desc ?? "Unknown",
-                        Label = "TODO",
-                        Checked = false
-                    });
-                }
-                else if (info?.Value == null)
-                {
-                    unlistedInfos.Add(new FieldResponse
-                    {
-                        Id = p.Id.ToString(),
-                        // TODO: Desc removed; should resolve via WorkerInfo.Field.Label after proper Include.
-                        // Label = info?.Desc ?? "Unknown",
-                        Label = "TODO",
-                        Checked = false
-                    });
-                }
 
+            foreach (var p in permsForRequest)
+            {
+                var info = workerInfos.FirstOrDefault(w => w.Id == p.InfoId);
+                var label = info?.CustomLabel ?? info?.Field?.Label ?? "Unknown";
+
+                if (info?.Value != null)
+                    listedInfos.Add(new FieldResponse { Id = p.Id.ToString(), Label = label, Checked = false });
+                else
+                    unlistedInfos.Add(new FieldResponse { Id = p.Id.ToString(), Label = label, Checked = false });
             }
 
             rows.Add(new RequestRowResponse
@@ -174,25 +105,14 @@ public class WorkerController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>Get active (approved + not expired) access entries for a worker.</summary>
     [HttpGet("{workerId}/active-access")]
     public async Task<ActionResult<List<ActiveAccessDto>>> GetActiveAccess(
         Guid workerId,
         [FromQuery] string? company = null,
         [FromQuery] string? dataType = null)
     {
-        var result = await _activeAccessService.GetActiveAccessAsync(
-            workerId,
-            company,
-            dataType);
-
+        var result = await _activeAccessService.GetActiveAccessAsync(workerId, company, dataType);
         return Ok(result);
     }
-
-    [HttpGet("GetCategoryFields")]
-    public ActionResult<Dictionary<string, List<string>>> GetCategoryFields()
-    {
-        var fields = _workerInfoService.GetCategoryFields();
-        return Ok(fields);
-    }
-
 }

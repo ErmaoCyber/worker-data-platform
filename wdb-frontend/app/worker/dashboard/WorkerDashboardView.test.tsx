@@ -10,6 +10,11 @@ const mockData: WorkerDashboardResponse = {
     verified: true,
     blockchainAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   },
+  summary: {
+    pendingReviews: 1,
+    activeAccess: 0,
+    totalRequests: 1,
+  },
   latestRequests: [
     {
       requestId: "55555555-5555-5555-5555-555555555551",
@@ -32,7 +37,8 @@ const mockDataWithBlockchainRecord: WorkerDashboardResponse = {
     {
       action: "PermissionApproved",
       actionLabel: "Access Approved",
-      userMessage: "You approved First Step Solutions to access your information.",
+      userMessage:
+        "You approved First Step Solutions to access your information.",
       employerName: "First Step Solutions",
       employerAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
       workerAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -44,43 +50,71 @@ const mockDataWithBlockchainRecord: WorkerDashboardResponse = {
 };
 
 describe("WorkerDashboardView", () => {
-  it("renders worker basic information", () => {
+  it("renders worker dashboard header and summary cards", () => {
     render(<WorkerDashboardView data={mockData} />);
 
-    expect(screen.getByText("Worker Dashboard")).toBeInTheDocument();
-    expect(screen.getByText("user")).toBeInTheDocument();
-    expect(screen.getByText("user@example.com")).toBeInTheDocument();
-    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("Worker dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Welcome back, user")).toBeInTheDocument();
+    expect(screen.getByText("Pending reviews")).toBeInTheDocument();
+    expect(screen.getByText("Active access")).toBeInTheDocument();
+    expect(screen.getByText("Total requests")).toBeInTheDocument();
+    expect(screen.getByText("Blockchain audit")).toBeInTheDocument();
+    expect(screen.getByText("Connected")).toBeInTheDocument();
   });
 
   it("renders latest requests", () => {
     render(<WorkerDashboardView data={mockData} />);
 
-    expect(screen.getByText("Latest Requests")).toBeInTheDocument();
-    expect(screen.getAllByText("First Step Solutions")[0]).toBeInTheDocument();
+    expect(screen.getByText("Latest requests")).toBeInTheDocument();
+    expect(screen.getByText("First Step Solutions")).toBeInTheDocument();
+    expect(screen.getByText("PPE requirements")).toBeInTheDocument();
     expect(screen.getByText("Site onboarding")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.getByText("Review")).toBeInTheDocument();
   });
 
-  it("renders empty access history placeholder", () => {
+  it("renders empty blockchain activity placeholder", () => {
     render(<WorkerDashboardView data={mockData} />);
 
+    expect(screen.getByText("Recent blockchain activity")).toBeInTheDocument();
     expect(
-      screen.getByText("No access history records available yet.")
+      screen.getByText("No blockchain records available yet.")
     ).toBeInTheDocument();
   });
 
-  it("renders user-friendly access history records", () => {
+  it("renders user-friendly blockchain activity records", () => {
     render(<WorkerDashboardView data={mockDataWithBlockchainRecord} />);
 
-    expect(screen.getByText("Recent Access History")).toBeInTheDocument();
-    expect(screen.getByText("Connected")).toBeInTheDocument();
+    expect(screen.getByText("Recent blockchain activity")).toBeInTheDocument();
     expect(screen.getByText("Access Approved")).toBeInTheDocument();
     expect(
-      screen.getByText("You approved First Step Solutions to access your information.")
+      screen.getByText(
+        "You approved First Step Solutions to access your information."
+      )
     ).toBeInTheDocument();
-    expect(screen.getAllByText("First Step Solutions")[0]).toBeInTheDocument();
-    expect(screen.getByText("On-chain")).toBeInTheDocument();
-    expect(screen.getByText("0x7099...79C8")).toBeInTheDocument();
-    expect(screen.getByText("0x4c8201b5...e64cc8")).toBeInTheDocument();
+    expect(
+      screen.getByText("Proof: 0x4c8201b5...e64cc8")
+    ).toBeInTheDocument();
+  });
+
+  it("renders blockchain unavailable message", () => {
+    render(
+      <WorkerDashboardView
+        data={{
+          ...mockData,
+          blockchainAvailable: false,
+          blockchainRecords: [],
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText("Blockchain audit is currently unavailable.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Your normal access request flow still works. On-chain audit records will appear here when the blockchain service is running."
+      )
+    ).toBeInTheDocument();
   });
 });

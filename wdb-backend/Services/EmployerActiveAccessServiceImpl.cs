@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
@@ -11,18 +12,18 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
 {
     private readonly AppDbContext _context;
     private readonly ISupabaseStorageService _storage;
-    private readonly INotificationService _notificationService;
+    private readonly IMediator _mediator;
     private readonly IBlockchainAuditService _audit;
 
     public EmployerActiveAccessServiceImpl(
         AppDbContext context,
         ISupabaseStorageService storage,
-        INotificationService notificationService,
+        IMediator mediator,
         IBlockchainAuditService audit)
     {
         _context = context;
         _storage = storage;
-        _notificationService = notificationService;
+        _mediator = mediator;
         _audit = audit;
     }
 
@@ -95,7 +96,7 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
                 WorkerName = request.Worker.Name,
                 WorkerEmail = request.Worker.Email,
                 Reason = request.Reason,
-                GrantedAt = approvedPerms.Max(p => p.LastUpdatedAt),
+                GrantedAt = approvedPerms.Max(p => p.LastUpdatedAt) ?? request.CreatedAt,
                 ExpiryDate = request.ExpiryDate,
                 Categories = groups
             });
@@ -138,17 +139,19 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
 
         var info = permission.WorkerInfo;
 
-        await _notificationService.NotifyAsync(
-            NotificationType.DataAccessed,
-            recipientWorkerId: permission.WorkerId,
-            recipientEmployerId: null,
-            requestId: permission.RequestId,
+        await _mediator.Send(
+            new NotificationCommand(
+                EmployerId: permission.Request.EmployerId,
+                WorkerId: permission.WorkerId,
+                RequestId: permission.RequestId,
+                FieldLabel: null,
+                Type: NotificationType.DataAccessed),
             cancellationToken);
 
         await _audit.TryLogAsync(
             permission.Request.EmployerId,
             permission.WorkerId,
-            BlockchainAction.DataAccessed,
+            BlockchainAction.DataViewed,
             cancellationToken);
 
         if (info.Type == "file")

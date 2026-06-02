@@ -73,7 +73,7 @@ public class EmployerDashboardServiceImpl : IEmployerDashboardService
                 Reason = r.Reason,
                 Status = perRequestStatus[r.Id],
                 LastUpdatedAt = r.Permissions.Any()
-                    ? r.Permissions.Max(p => p.LastUpdatedAt)
+                    ? (r.Permissions.Max(p => p.LastUpdatedAt) ?? r.CreatedAt)
                     : r.CreatedAt
             })
             .ToList();

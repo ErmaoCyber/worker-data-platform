@@ -12,28 +12,49 @@ public class RequestServiceImpl : IRequestService
         _requestRepository = requestRepository;
     }
 
-    public async Task<Request> CreateAsync(Guid employerId, Guid workerId, string reason, CancellationToken cancellationToken = default)
+    public async Task<Request> CreateAsync(
+        Guid employerId,
+        Guid workerId,
+        string reason,
+        string? customRequest = null,
+        CancellationToken cancellationToken = default)
     {
-        var resultRequest = await _requestRepository.AddAsync(employerId, workerId, reason, cancellationToken) ?? throw new KeyNotFoundException();
+        var resultRequest = await _requestRepository.AddAsync(
+            employerId,
+            workerId,
+            reason,
+            customRequest,
+            cancellationToken) ?? throw new KeyNotFoundException();
+
         return resultRequest;
     }
 
-
-    public Task<LinkedList<Request>> GetAllByEmployerIdAsync(Guid employerId, CancellationToken cancellationToken = default)
+    public Task<LinkedList<Request>> GetAllByEmployerIdAsync(
+        Guid employerId,
+        CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public async Task<List<Request>> GetAllByWorkerIdAsync(Guid workerId, CancellationToken cancellationToken = default)
+    public async Task<List<Request>> GetAllByWorkerIdAsync(
+        Guid workerId,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _requestRepository.GetAllByWorkerIdAsync(workerId, cancellationToken);
+        var result = await _requestRepository.GetAllByWorkerIdAsync(
+            workerId,
+            cancellationToken);
+
         return result;
     }
 
-    public async Task<Request> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
+    public async Task<Request> GetByRequestIdAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _requestRepository.GetByRequestIdAsync(requestId, cancellationToken);
+        var result = await _requestRepository.GetByRequestIdAsync(
+            requestId,
+            cancellationToken);
+
         return result;
     }
-
 }

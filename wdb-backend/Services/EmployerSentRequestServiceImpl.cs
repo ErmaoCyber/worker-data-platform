@@ -56,7 +56,7 @@ public class EmployerSentRequestServiceImpl : IEmployerSentRequestService
             ExpiryDate = r.ExpiryDate,
             CreatedAt = r.CreatedAt,
             LastUpdatedAt = r.Permissions.Any()
-                ? r.Permissions.Max(p => p.LastUpdatedAt)
+                ? (r.Permissions.Max(p => p.LastUpdatedAt) ?? r.CreatedAt)
                 : r.CreatedAt,
             CustomRequest = r.CustomRequest,
             CustomRequestStatus = r.CustomRequestStatus,

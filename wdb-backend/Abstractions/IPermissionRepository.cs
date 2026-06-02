@@ -4,23 +4,21 @@ namespace wdb_backend.Abstractions;
 
 public interface IPermissionRepository
 {
-    // add all permissions according to request
+    /// <summary>Bulk-create one permission row per WorkerInfo under the given request.</summary>
     Task AddAllByRequestAsync(Request request, List<WorkerInfo> workerInfos, CancellationToken cancellationToken = default);
 
-    // update status
+    /// <summary>Update a single permission row.</summary>
     Task<Permission> UpdateAsync(Guid permissionId, Permission permission, CancellationToken cancellationToken = default);
 
-    // get all permissions of specific request id
-    Task<LinkedList<Permission>> GetAllByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default);
+    /// <summary>Get all permissions belonging to a request.</summary>
+    Task<List<Permission>> GetAllByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default);
 
-    // get one permission by id
+    /// <summary>Get a single permission by its own ID.</summary>
     Task<Permission> GetOneAsync(Guid permissionId, CancellationToken cancellationToken = default);
 
-    // get all permissions by worker id
+    /// <summary>Get all permissions for a worker, optionally filtered by status int value.</summary>
     Task<List<Permission>> GetAllByWorkerIdAsync(Guid workerId, CancellationToken cancellationToken = default);
 
-
-    // add one permission according to request
-    Task AddOneByRequestAsync(Request request, WorkerInfo workerInfo, CancellationToken cancellationToken=default);
-
+    /// <summary>Create one permission row linked to a request and a WorkerInfo row.</summary>
+    Task AddOneByRequestAsync(Request request, WorkerInfo workerInfo, CancellationToken cancellationToken = default);
 }

@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using wdb_backend.Abstractions;
 using wdb_backend.Common;
@@ -10,16 +11,16 @@ namespace wdb_backend.Services;
 public class EmployerRequestServiceImpl : IEmployerRequestService
 {
     private readonly AppDbContext _context;
-    private readonly INotificationService _notificationService;
+    private readonly IMediator _mediator;
     private readonly IBlockchainAuditService _audit;
 
     public EmployerRequestServiceImpl(
         AppDbContext context,
-        INotificationService notificationService,
+        IMediator mediator,
         IBlockchainAuditService audit)
     {
         _context = context;
-        _notificationService = notificationService;
+        _mediator = mediator;
         _audit = audit;
     }
 
@@ -150,17 +151,19 @@ public class EmployerRequestServiceImpl : IEmployerRequestService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        await _notificationService.NotifyAsync(
-            NotificationType.NewRequest,
-            recipientWorkerId: worker.Id,
-            recipientEmployerId: null,
-            requestId: request.Id,
+        await _mediator.Send(
+            new NotificationCommand(
+                EmployerId: employerId,
+                WorkerId: worker.Id,
+                RequestId: request.Id,
+                FieldLabel: null,
+                Type: NotificationType.NewRequest),
             cancellationToken);
 
         await _audit.TryLogAsync(
             employerId,
             worker.Id,
-            BlockchainAction.RequestCreated,
+            BlockchainAction.PermissionRequested,
             cancellationToken);
 
         return new CreateEmployerRequestResultDto { RequestId = request.Id };

@@ -1,63 +1,161 @@
-import { WorkerInfoItem } from "@/app/worker/profile/type";
+import type {
+  CreateCustomFieldRequest,
+  UpdateCustomFieldRequest,
+  UpdatePresetFieldRequest,
+  WorkerProfileCategory,
+  WorkerProfileField,
+} from '@/app/worker/profile/type';
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5258'}/api/worker/info`
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  'http://localhost:5258';
 
+const PROFILE_URL = `${API_BASE_URL}/api/worker/profile`;
 
-
-// a method that get worker repority from http in order to translate data to frontend
-// parament is worker id and had statement by type.ts
-export async function getWorkerProfile(token: string): Promise<WorkerInfoItem[]> {
-    const response = await fetch(BASE_URL, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to fetch worker profile')
-    }
-
-    return response.json() as Promise<WorkerInfoItem[]> // tell program json's struction is same with interface:WorkerInfoItem
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+    return data?.message ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-
-//when user add more info and click save, this method will pass the data to http and back to endfront
-//uses PUT so the unlisted-info row (created by the request with NULL value) gets updated in place, keeping the original info_id that the permission already points at
-export async function addWorkerProfile(token: string, desc: string, value: string, category: string) {
-    const response = await fetch(BASE_URL, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ Desc: desc, Value: value, Category: category }),
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to add worker info')
-    }
-    return response.json();
+function authHeaders(token: string) {
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
 }
 
+export async function getWorkerProfile(
+  token: string,
+): Promise<WorkerProfileCategory[]> {
+  const response = await fetch(PROFILE_URL, {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
 
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, 'Failed to fetch worker profile.'),
+    );
+  }
 
+  return response.json();
+}
 
-// when user had edit this method can update or cover the newest dat to http then pass to endfront
-export async function updateWorkerProfile(token: string, desc: string, value: string, category: string) {
-    const response = await fetch(BASE_URL, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ Desc: desc, Value: value, Category: category }),
-    })
+export async function updatePresetField(
+  token: string,
+  request: UpdatePresetFieldRequest,
+): Promise<WorkerProfileField> {
+  const response = await fetch(`${PROFILE_URL}/preset`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify(request),
+  });
 
-    if (!response.ok) {
-        throw new Error('Failed to update worker profile')
-    }
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, 'Failed to update preset field.'),
+    );
+  }
 
-    return response.json()
+  return response.json();
+}
+
+export async function createCustomField(
+  token: string,
+  request: CreateCustomFieldRequest,
+): Promise<WorkerProfileField> {
+  const response = await fetch(`${PROFILE_URL}/custom`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, 'Failed to create custom field.'),
+    );
+  }
+
+  return response.json();
+}
+
+export async function updateCustomField(
+  token: string,
+  infoId: string,
+  request: UpdateCustomFieldRequest,
+): Promise<WorkerProfileField> {
+  const response = await fetch(`${PROFILE_URL}/custom/${infoId}`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, 'Failed to update custom field.'),
+    );
+  }
+
+  return response.json();
+}
+
+export async function deleteCustomField(
+  token: string,
+  infoId: string,
+): Promise<void> {
+  const response = await fetch(`${PROFILE_URL}/custom/${infoId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, 'Failed to delete custom field.'),
+    );
+  }
+}
+
+/**
+ * Legacy compatibility wrapper.
+ * Some older components still import addWorkerProfile(desc, value, category).
+ * For now, we map that call to the new custom field API.
+ *
+ * TODO: Remove this after old components are refactored or deleted.
+ */
+export async function addWorkerProfile(
+  token: string,
+  desc: string,
+  value: string,
+  category?: string,
+): Promise<WorkerProfileField> {
+  return createCustomField(token, {
+    label: desc,
+    type: 'text',
+    value,
+  });
+}
+
+/**
+ * Legacy compatibility wrapper.
+ * The old profile page used updateWorkerProfile(desc, value, category).
+ * New code should use updatePresetField or updateCustomField instead.
+ */
+export async function updateWorkerProfile(
+  token: string,
+  desc: string,
+  value: string,
+  category?: string,
+): Promise<WorkerProfileField> {
+  return createCustomField(token, {
+    label: desc,
+    type: 'text',
+    value,
+  });
 }

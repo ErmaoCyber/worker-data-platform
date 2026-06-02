@@ -5,7 +5,7 @@ using wdb_backend.Models;
 namespace wdb_backend.Controllers;
 
 /// <summary>
-/// API controller for managing permission approval and rejection.
+/// Handles worker approve / reject actions on individual permissions.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -18,27 +18,16 @@ public class PermissionController : ControllerBase
         _permissionService = permissionService;
     }
 
+    /// <summary>Approve a single permission.</summary>
     [HttpPatch("{permissionId}/approve")]
     public async Task<ActionResult<Permission>> ApprovePermission(
         Guid permissionId,
-        [FromBody] ApprovePermissionRequest request,
         CancellationToken cancellationToken)
     {
-        if (request.ExpiryDate == null)
-        {
-            return BadRequest(new { error = "EXPIRY_DATE_REQUIRED" });
-        }
-
         try
         {
-            var update = await _permissionService.UpdateAsync(
-                permissionId,
-                1,
-                request.ExpiryDate,
-                cancellationToken
-            );
-
-            return Ok(update);
+            var updated = await _permissionService.UpdateAsync(permissionId, 1, cancellationToken);
+            return Ok(updated);
         }
         catch (KeyNotFoundException)
         {
@@ -50,6 +39,7 @@ public class PermissionController : ControllerBase
         }
     }
 
+    /// <summary>Reject a single permission.</summary>
     [HttpPatch("{permissionId}/reject")]
     public async Task<ActionResult<Permission>> RejectPermission(
         Guid permissionId,
@@ -57,14 +47,8 @@ public class PermissionController : ControllerBase
     {
         try
         {
-            var update = await _permissionService.UpdateAsync(
-                permissionId,
-                2,
-                null,
-                cancellationToken
-            );
-
-            return Ok(update);
+            var updated = await _permissionService.UpdateAsync(permissionId, 2, cancellationToken);
+            return Ok(updated);
         }
         catch (KeyNotFoundException)
         {
@@ -75,9 +59,4 @@ public class PermissionController : ControllerBase
             return UnprocessableEntity(new { error = "INVALID_STATUS_CHANGE" });
         }
     }
-}
-
-public class ApprovePermissionRequest
-{
-    public DateTime? ExpiryDate { get; set; }
 }

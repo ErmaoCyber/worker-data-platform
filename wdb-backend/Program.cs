@@ -51,12 +51,12 @@ builder.Services.AddScoped<IActiveAccessService, ActiveAccessServiceImpl>();
 builder.Services.AddScoped<IEmployerActiveAccessService, EmployerActiveAccessServiceImpl>();
 builder.Services.AddScoped<IEmployerRequestService, EmployerRequestServiceImpl>();
 builder.Services.AddScoped<IWorkerAuditLogService, WorkerAuditLogServiceImpl>();
+builder.Services.AddScoped<IWorkerRequestReviewService, WorkerRequestReviewServiceImpl>();
 
 // Use cases
 builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
 builder.Services.AddScoped<IFindWorkerInfosByEmailUsecase, FindWorkerInfosByEmailUsecaseImpl>();
 builder.Services.AddScoped<IAddFlexibleWorkerInfoUsecase, AddFlexibleWorkerInfoUsecaseImpl>();
-
 
 // Repositories
 builder.Services.AddScoped<IWorkerRepository, WorkerRepoImpl>();
@@ -87,10 +87,10 @@ builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// register SignalR
+// Register SignalR
 builder.Services.AddSignalR();
 
-// register MediatR (scan current app and find out all Handlers)
+// Register MediatR
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
@@ -115,7 +115,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<NotificationsHub>("/hubs/notifications");  // map notification hub
+app.MapHub<NotificationsHub>("/hubs/notifications");
 app.MapOpenApi();
 
 app.Run();

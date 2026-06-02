@@ -1,26 +1,18 @@
 services:
-  hardhat-node:
-    build:
-      context: ./wdb-blockchain
-    container_name: wdb-hardhat-node
-    ports:
-      - "8545:8545"
-    command: npx hardhat node --hostname 0.0.0.0
-    networks:
-      - wdb-network
-
   wdb-backend:
     build:
       context: ./wdb-backend
     ports:
       - "5258:5258"
-    depends_on:
-      - hardhat-node
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5258
       - ConnectionStrings__DefaultConnection=${CONNECTION_STRING}
-      - Blockchain__RpcUrl=http://hardhat-node:8545
+
+      # Local host mode:
+      # If blockchain runs separately on your machine, backend connects through host.docker.internal.
+      # If blockchain is not running, backend should gracefully return empty audit records.
+      - Blockchain__RpcUrl=${BLOCKCHAIN_RPC_URL:-http://host.docker.internal:8545}
       - Blockchain__ContractAddress=${BLOCKCHAIN_CONTRACT_ADDRESS}
       - Blockchain__AbiPath=/app/blockchain-artifacts/contracts/TransactionLog.sol/TransactionLog.json
     volumes:
