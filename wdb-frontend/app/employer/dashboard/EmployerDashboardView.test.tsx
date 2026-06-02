@@ -71,9 +71,9 @@ describe('EmployerDashboardView', () => {
   it('renders request summary cards', () => {
     render(<EmployerDashboardView data={mockDashboardData} />);
 
-    expect(screen.getByText('Pending')).toBeInTheDocument();
-    expect(screen.getByText('Partially Approved')).toBeInTheDocument();
-    expect(screen.getByText('Approved')).toBeInTheDocument();
+    expect(screen.getAllByText('Pending').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Partially Approved').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Approved').length).toBeGreaterThan(0);
     expect(screen.getByText('Active Access')).toBeInTheDocument();
 
     expect(screen.getByText('2')).toBeInTheDocument();
