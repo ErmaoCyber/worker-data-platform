@@ -52,6 +52,7 @@ builder.Services.AddScoped<IEmployerActiveAccessService, EmployerActiveAccessSer
 builder.Services.AddScoped<IEmployerRequestService, EmployerRequestServiceImpl>();
 builder.Services.AddScoped<IWorkerAuditLogService, WorkerAuditLogServiceImpl>();
 builder.Services.AddScoped<IWorkerRequestReviewService, WorkerRequestReviewServiceImpl>();
+builder.Services.AddScoped<ICertificationService, CertificationServiceImpl>();
 
 // Use cases
 builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
