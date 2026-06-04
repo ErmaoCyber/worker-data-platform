@@ -54,6 +54,7 @@ builder.Services.AddScoped<IWorkerAuditLogService, WorkerAuditLogServiceImpl>();
 builder.Services.AddScoped<IWorkerRequestReviewService, WorkerRequestReviewServiceImpl>();
 builder.Services.AddScoped<ICertificationService, CertificationServiceImpl>();
 
+
 // Use cases
 builder.Services.AddScoped<ICreateDataAccessRequestUsecase, CreateDataAccessRequestUsecaseImpl>();
 builder.Services.AddScoped<IFindWorkerInfosByEmailUsecase, FindWorkerInfosByEmailUsecaseImpl>();

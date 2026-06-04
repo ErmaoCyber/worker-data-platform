@@ -1,6 +1,6 @@
 'use client'
 
-import { User, Bell, ShieldCheck, ChevronRight } from 'lucide-react'
+import { User, Bell, ShieldCheck, ChevronRight, LogOut } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
@@ -24,20 +24,21 @@ const formatTime = (iso: string) =>
         hour12: false
     })
 
-export default function TopBar() {
+export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
+    console.log('TopBar rendered, role:', role)
     const [open, setOpen] = useState(false)
     const [messagesHovered, setMessagesHovered] = useState(false)
     const [notifications, setNotifications] = useState<NotificationFormat[]>([])
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
-    const { userId, token, isAuthReady } = useAuth()
+    const { userId, token, isAuthReady, logout } = useAuth()
     const { refreshKey } = useNotificationRefresh()
 
-
+    // 加载通知
     useEffect(() => {
         if (!isAuthReady || !userId || !token) return
         const load = async () => {
-            const res = await fetch(`${API_URL}/api/notification/unread/${userId}`, {
+            const res = await fetch(`${API_URL}/api/notification/employer/me?isRead=false`, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -45,12 +46,14 @@ export default function TopBar() {
             })
             if (!res.ok) return
             const response = await res.json()
-            setNotifications(response.data ?? [])
+            const data = Array.isArray(response) ? response : response.data ?? []
+            console.log('notifications:', data)
+            setNotifications(Array.isArray(response) ? response : response.data ?? [])
         }
         load()
     }, [isAuthReady, userId, token, refreshKey])
 
-
+    // 标记已读
     async function markAsRead(notificationId: string) {
         if (!token) return
         const res = await fetch(`${API_URL}/api/notification/${notificationId}`, {
@@ -64,7 +67,7 @@ export default function TopBar() {
         setNotifications(prev => prev.filter(n => n.id !== notificationId))
     }
 
-
+    // 点击外部关闭
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -80,13 +83,12 @@ export default function TopBar() {
         <div className="flex justify-end items-center px-8 py-4 border-b border-gray-200 bg-white">
             <div className="relative" ref={dropdownRef}>
 
-                {/* User icon */}
+                {/* User 图标 */}
                 <button
                     onClick={() => setOpen(!open)}
                     className="relative w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center hover:bg-gray-400 transition-colors"
                 >
                     <User size={20} className="text-gray-600" />
-                    {/* Unread notification indicator */}
                     {notifications.length > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                             {notifications.length}
@@ -94,11 +96,11 @@ export default function TopBar() {
                     )}
                 </button>
 
-                {/* first layer- Dropdown */}
+                {/* Dropdown */}
                 {open && (
                     <div className="absolute right-0 top-12 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
 
-                        {/* Messages section */}
+                        {/* Messages */}
                         <div
                             className="relative"
                             onMouseEnter={() => setMessagesHovered(true)}
@@ -117,11 +119,9 @@ export default function TopBar() {
                                 <ChevronRight size={14} className="text-gray-400" />
                             </button>
 
-                            {/* second layer - notifications list */}
+                            {/* 第二层通知列表 */}
                             {messagesHovered && (
                                 <div className="absolute right-full top-0 mr-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-
-                                    {/* header */}
                                     <div className="px-4 py-3 border-b border-gray-100">
                                         <p className="text-sm font-semibold text-gray-800">Notifications</p>
                                         {notifications.length > 0 && (
@@ -129,7 +129,6 @@ export default function TopBar() {
                                         )}
                                     </div>
 
-                                    {/* notifications */}
                                     <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
                                         {notifications.length === 0 ? (
                                             <p className="px-4 py-6 text-sm text-center text-gray-400">
@@ -145,7 +144,8 @@ export default function TopBar() {
                                                     <span className="mt-1.5 w-2 h-2 flex-shrink-0 rounded-full bg-red-500" />
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-medium text-gray-800 leading-snug">
-                                                            [{n.notificationType}] {n.employerName} — [{n.workerInfoDesc}]
+                                                            [{n.notificationType}]
+                                                            {n.workerInfoDesc ? ` — ${n.workerInfoDesc}` : ''}
                                                         </p>
                                                         <p className="text-xs text-gray-400 mt-0.5">
                                                             {formatTime(n.notificationTime)}
@@ -156,7 +156,6 @@ export default function TopBar() {
                                         )}
                                     </div>
 
-                                    {/* View all */}
                                     <div className="border-t border-gray-100 px-4 py-2.5">
                                         <Link
                                             href="/notification/all"
@@ -170,20 +169,36 @@ export default function TopBar() {
                             )}
                         </div>
 
-                        {/* divider */}
-                        <div className="border-t border-gray-100" />
+                        {/* Certification — 只在 employer 端显示 */}
+                        {role === 'employer' && (
+                            <div className="border-t border-gray-100">
+                                <button
+                                    onClick={() => {
+                                        router.push('/employer/certification')
+                                        setOpen(false)
+                                    }}
+                                    className="flex items-center gap-2 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                    <ShieldCheck size={16} />
+                                    <span>Certification</span>
+                                </button>
+                            </div>
+                        )}
 
-                        {/* Certification section */}
-                        <button
-                            onClick={() => {
-                                router.push('/employer/certification')
-                                setOpen(false)
-                            }}
-                            className="flex items-center gap-2 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-b-xl"
-                        >
-                            <ShieldCheck size={16} />
-                            <span>Certification</span>
-                        </button>
+                        {/* Log Out */}
+                        <div className="border-t border-gray-100">
+                            <button
+                                onClick={() => {
+                                    logout()
+                                    router.push('/')
+                                    setOpen(false)
+                                }}
+                                className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl"
+                            >
+                                <LogOut size={16} />
+                                <span>Log Out</span>
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

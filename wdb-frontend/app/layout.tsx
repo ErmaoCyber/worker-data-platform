@@ -4,7 +4,7 @@ import "./globals.css";
 import SignalRListener from "./notification/SignalRListener";
 import 'react-toastify/dist/ReactToastify.css';
 import Providers from "@/component/providers";
-import TopBarWrapper from "@/component/ui/TopBarWrapper";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,10 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="m-0 min-h-screen flex flex-col">
-        {/* Use Providers (which wraps AuthProvider) so notification components
-            and the SignalR listener can consume centralized auth state via useAuth(). */}
         <Providers>
-          <TopBarWrapper />
           {children}
           <SignalRListener />
         </Providers>
