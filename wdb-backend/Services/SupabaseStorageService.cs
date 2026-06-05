@@ -48,7 +48,7 @@ public class SupabaseStorageService : ISupabaseStorageService
 
         return new SignedUrlResult
         {
-            Url = $"{_supabaseUrl}{payload.SignedUrl}",
+            Url = $"{_supabaseUrl}/storage/v1{payload.SignedUrl}",
             ExpiresAt = DateTime.UtcNow.AddSeconds(expiresInSeconds)
         };
     }
