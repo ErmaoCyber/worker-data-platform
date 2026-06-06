@@ -18,10 +18,14 @@ namespace wdb_backend.Controllers;
 public class WorkerInfoController : ControllerBase
 {
     private readonly IWorkerInfoService _workerInfoService;
+    private readonly ISupabaseStorageService _storage;
 
-    public WorkerInfoController(IWorkerInfoService workerInfoService)
+    public WorkerInfoController(
+        IWorkerInfoService workerInfoService,
+        ISupabaseStorageService storage)
     {
         _workerInfoService = workerInfoService;
+        _storage = storage;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -283,6 +287,47 @@ public class WorkerInfoController : ControllerBase
         catch (InvalidOperationException ex) when (ex.Message == "PERMISSION_HISTORY_EXISTS")
         {
             return Conflict(new { message = "This field has access history and cannot be deleted. You can clear the value instead." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    // ── POST /api/worker/profile/upload ───────────────────────────────────
+
+    /// <summary>
+    /// Upload a file blob to storage and return the stored path.
+    /// The caller then writes that path into WorkerInfo.Value via the
+    /// preset/custom endpoints. Files are stored under worker/{workerId}/.
+    /// </summary>
+    [HttpPost("upload")]
+    public async Task<IActionResult> UploadFile(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var workerId = GetCurrentWorkerId();
+
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "File is required." });
+
+            var safeName = Path.GetFileName(file.FileName);
+            var objectPath = $"worker/{workerId}/{Guid.NewGuid()}-{safeName}";
+
+            await using var stream = file.OpenReadStream();
+            var storedPath = await _storage.UploadAsync(
+                stream,
+                objectPath,
+                file.ContentType ?? "application/octet-stream",
+                cancellationToken);
+
+            return Ok(new { path = storedPath });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
         }
         catch (Exception ex)
         {
