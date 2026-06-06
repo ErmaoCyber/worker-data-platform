@@ -13,21 +13,18 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
     private readonly AppDbContext _context;
     private readonly ISupabaseStorageService _storage;
     private readonly IMediator _mediator;
-    private readonly IBlockchainService _blockchainService;
-    private readonly ILogger<EmployerActiveAccessServiceImpl> _logger;
+    private readonly IBlockchainAuditService _audit;
 
     public EmployerActiveAccessServiceImpl(
         AppDbContext context,
         ISupabaseStorageService storage,
         IMediator mediator,
-        IBlockchainService blockchainService,
-        ILogger<EmployerActiveAccessServiceImpl> logger)
+        IBlockchainAuditService audit)
     {
         _context = context;
         _storage = storage;
         _mediator = mediator;
-        _blockchainService = blockchainService;
-        _logger = logger;
+        _audit = audit;
     }
 
     public async Task<List<EmployerActiveAccessDto>> GetActiveAccessAsync(
@@ -52,7 +49,10 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
                 .ThenInclude(p => p.WorkerInfo!)
                     .ThenInclude(wi => wi.Field!)
                         .ThenInclude(f => f.Category)
-            .Where(r => r.EmployerId == employerId && r.ExpiryDate > now)
+            .Where(r =>
+                r.EmployerId == employerId &&
+                r.ExpiryDate.HasValue &&
+                r.ExpiryDate.Value > now)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
 
@@ -60,11 +60,14 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
 
         foreach (var request in requests)
         {
+            // Only approved permissions that already have a worker_info row attached.
+            // Pending / rejected / revoked rows do not appear in My Access.
             var approvedPerms = request.Permissions
                 .Where(p => p.Status == PermissionStatus.Approved && p.WorkerInfo != null)
                 .ToList();
 
-            if (approvedPerms.Count == 0) continue;
+            if (approvedPerms.Count == 0)
+                continue;
 
             var groups = approvedPerms
                 .Select(p => new
@@ -99,7 +102,7 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
                 WorkerEmail = request.Worker.Email,
                 Reason = request.Reason,
                 GrantedAt = approvedPerms.Max(p => p.LastUpdatedAt) ?? request.CreatedAt,
-                ExpiryDate = request.ExpiryDate,
+                ExpiryDate = request.ExpiryDate!.Value,
                 Categories = groups
             });
         }
@@ -115,11 +118,7 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
         var permission = await _context.Permissions
             .AsNoTracking()
             .Include(p => p.Request)
-            .Include(p => p.Field)
-                .ThenInclude(f => f!.Category)
             .Include(p => p.WorkerInfo)
-                .ThenInclude(wi => wi!.Field)
-                    .ThenInclude(f => f!.Category)
             .FirstOrDefaultAsync(p => p.Id == permissionId, cancellationToken)
             ?? throw new KeyNotFoundException($"Permission {permissionId} not found");
 
@@ -133,7 +132,8 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
             throw new InvalidOperationException("Permission is not approved.");
         }
 
-        if (permission.Request.ExpiryDate <= DateTime.UtcNow)
+        if (!permission.Request.ExpiryDate.HasValue ||
+            permission.Request.ExpiryDate.Value <= DateTime.UtcNow)
         {
             throw new InvalidOperationException("Permission has expired.");
         }
@@ -150,13 +150,14 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
                 EmployerId: permission.Request.EmployerId,
                 WorkerId: permission.WorkerId,
                 RequestId: permission.RequestId,
-                FieldLabel: ResolveLabel(permission),
+                FieldLabel: null,
                 Type: NotificationType.DataAccessed),
             cancellationToken);
 
-        await LogDataViewedToBlockchainAsync(
-            employerId,
-            permission,
+        await _audit.TryLogAsync(
+            permission.Request.EmployerId,
+            permission.WorkerId,
+            BlockchainAction.DataViewed,
             cancellationToken);
 
         if (info.Type == "file")
@@ -181,72 +182,5 @@ public class EmployerActiveAccessServiceImpl : IEmployerActiveAccessService
             Type = "text",
             Value = info.Value
         };
-    }
-
-    private async Task LogDataViewedToBlockchainAsync(
-        Guid employerId,
-        Permission permission,
-        CancellationToken cancellationToken)
-    {
-        var employer = await _context.Employers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == employerId, cancellationToken)
-            ?? throw new KeyNotFoundException("EMPLOYER_NOT_FOUND_FOR_BLOCKCHAIN_LOG");
-
-        var worker = await _context.Workers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(w => w.Id == permission.WorkerId, cancellationToken)
-            ?? throw new KeyNotFoundException("WORKER_NOT_FOUND_FOR_BLOCKCHAIN_LOG");
-
-        if (string.IsNullOrWhiteSpace(employer.PrivateKey))
-            throw new InvalidOperationException("EMPLOYER_PRIVATE_KEY_MISSING");
-
-        if (string.IsNullOrWhiteSpace(employer.BlockchainAddress))
-            throw new InvalidOperationException("EMPLOYER_BLOCKCHAIN_ADDRESS_MISSING");
-
-        if (string.IsNullOrWhiteSpace(worker.BlockchainAddress))
-            throw new InvalidOperationException("WORKER_BLOCKCHAIN_ADDRESS_MISSING");
-
-        var category = ResolveCategory(permission);
-        var label = ResolveLabel(permission);
-
-        _logger.LogWarning(
-            "Writing employer data-view blockchain log. RequestId={RequestId}, PermissionId={PermissionId}, Category={Category}, Label={Label}",
-            permission.RequestId,
-            permission.Id,
-            category,
-            label);
-
-        var txHash = await _blockchainService.LogCategoryTransactionAsync(
-            privateKey: employer.PrivateKey!,
-            employerAddress: employer.BlockchainAddress!,
-            workerAddress: worker.BlockchainAddress!,
-            requestId: permission.RequestId.ToString(),
-            category: category,
-            permissionIds: permission.Id.ToString(),
-            itemLabels: label,
-            action: BlockchainAction.DataViewed,
-            cancellationToken: cancellationToken);
-
-        _logger.LogWarning(
-            "Employer data-view blockchain log written successfully. RequestId={RequestId}, PermissionId={PermissionId}, TxHash={TxHash}",
-            permission.RequestId,
-            permission.Id,
-            txHash);
-    }
-
-    private static string ResolveLabel(Permission permission)
-    {
-        return permission.Field?.Label
-            ?? permission.WorkerInfo?.Field?.Label
-            ?? permission.WorkerInfo?.CustomLabel
-            ?? "Unknown";
-    }
-
-    private static string ResolveCategory(Permission permission)
-    {
-        return permission.Field?.Category?.CategoryName
-            ?? permission.WorkerInfo?.Field?.Category?.CategoryName
-            ?? "OtherInformation";
     }
 }
