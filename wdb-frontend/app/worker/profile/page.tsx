@@ -9,6 +9,7 @@ import {
   getWorkerProfile,
   updateCustomField,
   updatePresetField,
+  uploadProfileFile,
 } from '@/lib/api/workerApi';
 import type {
   WorkerProfileCategory,
@@ -71,6 +72,13 @@ function categoryDescription(category: string) {
 
 function getFieldKey(field: WorkerProfileField) {
   return field.infoId ?? field.fieldId ?? field.label;
+}
+
+// Path stored in DB is "worker/{workerId}/{guid}-{originalFilename}".
+// Strip the prefix and 36-char UUID to show only the human-readable name.
+function fileNameFromPath(path: string) {
+  const last = path.substring(path.lastIndexOf('/') + 1);
+  return last.length > 37 ? last.substring(37) : last;
 }
 
 function sortCategories(categories: WorkerProfileCategory[]) {
@@ -577,17 +585,53 @@ export default function ProfilePage() {
                             Value
                           </label>
 
-                          <input
-                            value={newCustom.value}
-                            onChange={(event) =>
-                              setNewCustom((current) => ({
-                                ...current,
-                                value: event.target.value,
-                              }))
-                            }
-                            placeholder="Enter the information to save"
-                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                          />
+                          {newCustom.type === 'file' ? (
+                            <>
+                              <input
+                                type="file"
+                                disabled={savingKey === 'new-custom'}
+                                onChange={async (event) => {
+                                  const file = event.target.files?.[0];
+                                  if (!file || !token) return;
+                                  setSavingKey('new-custom');
+                                  setErrorMsg('');
+                                  try {
+                                    const path = await uploadProfileFile(token, file);
+                                    setNewCustom((current) => ({
+                                      ...current,
+                                      value: path,
+                                    }));
+                                  } catch (error) {
+                                    setErrorMsg(
+                                      error instanceof Error
+                                        ? error.message
+                                        : String(error),
+                                    );
+                                  } finally {
+                                    setSavingKey(null);
+                                  }
+                                }}
+                                className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                              />
+                              {newCustom.value && (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Uploaded: {fileNameFromPath(newCustom.value)}
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <input
+                              value={newCustom.value}
+                              onChange={(event) =>
+                                setNewCustom((current) => ({
+                                  ...current,
+                                  value: event.target.value,
+                                }))
+                              }
+                              placeholder="Enter the information to save"
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            />
+                          )}
                         </div>
 
                         <button
@@ -658,20 +702,62 @@ export default function ProfilePage() {
 
                             <div className="min-w-0">
                               {isEditing ? (
-                                <input
-                                  value={draft.value}
-                                  onChange={(event) =>
-                                    updateDraft(field, {
-                                      value: event.target.value,
-                                    })
-                                  }
-                                  placeholder="Leave blank to clear this value"
-                                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                />
+                                field.type === 'file' ? (
+                                  <div>
+                                    <input
+                                      type="file"
+                                      disabled={savingKey === key}
+                                      onChange={async (event) => {
+                                        const file = event.target.files?.[0];
+                                        if (!file || !token) return;
+                                        setSavingKey(key);
+                                        setErrorMsg('');
+                                        try {
+                                          const path = await uploadProfileFile(
+                                            token,
+                                            file,
+                                          );
+                                          updateDraft(field, { value: path });
+                                        } catch (error) {
+                                          setErrorMsg(
+                                            error instanceof Error
+                                              ? error.message
+                                              : String(error),
+                                          );
+                                        } finally {
+                                          setSavingKey(null);
+                                        }
+                                      }}
+                                      className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                                    />
+                                    {draft.value && (
+                                      <p className="mt-1 text-xs text-slate-500">
+                                        Current: {fileNameFromPath(draft.value)}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <input
+                                    value={draft.value}
+                                    onChange={(event) =>
+                                      updateDraft(field, {
+                                        value: event.target.value,
+                                      })
+                                    }
+                                    placeholder="Leave blank to clear this value"
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                  />
+                                )
                               ) : field.hasValue ? (
-                                <p className="break-words text-sm text-slate-900">
-                                  {field.value}
-                                </p>
+                                field.type === 'file' ? (
+                                  <p className="break-words text-sm text-slate-900">
+                                    {fileNameFromPath(field.value ?? '')}
+                                  </p>
+                                ) : (
+                                  <p className="break-words text-sm text-slate-900">
+                                    {field.value}
+                                  </p>
+                                )
                               ) : (
                                 <p className="text-sm text-slate-400">
                                   Not provided

@@ -9,6 +9,11 @@ services:
       - ASPNETCORE_URLS=http://+:5258
       - ConnectionStrings__DefaultConnection=${CONNECTION_STRING}
 
+      # Supabase storage (worker file uploads + employer signed-URL downloads)
+      - Supabase__Url=${Supabase__Url}
+      - Supabase__ServiceRoleKey=${Supabase__ServiceRoleKey}
+      - Supabase__DocumentsBucket=${Supabase__DocumentsBucket:-worker-documents}
+
       # Local host mode:
       # If blockchain runs separately on your machine, backend connects through host.docker.internal.
       # If blockchain is not running, backend should gracefully return empty audit records.

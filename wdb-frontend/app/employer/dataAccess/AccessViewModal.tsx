@@ -14,6 +14,57 @@ interface AccessViewModalProps {
   onClose: () => void;
 }
 
+// Supabase serves signed-URL responses with X-Frame-Options: SAMEORIGIN,
+// which blocks cross-origin iframe embedding. Fetch the file via JS,
+// then render through a same-origin blob: URL.
+function FileFrame({ signedUrl, title }: { signedUrl: string; title: string }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let revoked = false;
+    let createdUrl: string | null = null;
+
+    fetch(signedUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Storage returned ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        if (revoked) return;
+        createdUrl = URL.createObjectURL(blob);
+        setBlobUrl(createdUrl);
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : String(e)));
+
+    return () => {
+      revoked = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [signedUrl]);
+
+  if (err) {
+    return (
+      <p className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        Failed to load file: {err}
+      </p>
+    );
+  }
+
+  if (!blobUrl) {
+    return <p className="text-sm text-slate-500">Loading file...</p>;
+  }
+
+  return (
+    <iframe
+      src={`${blobUrl}#toolbar=0&navpanes=0`}
+      className="w-full rounded-lg border border-slate-200"
+      style={{ height: '70vh' }}
+      title={title}
+    />
+  );
+}
+
 export default function AccessViewModal({
   permissionId,
   itemLabel,
@@ -102,14 +153,7 @@ export default function AccessViewModal({
 
             {result.type === 'file' && result.url && (
               <div>
-                {/* #toolbar=0&navpanes=0 hides the browser PDF toolbar (Chromium-based browsers).
-                    This is a soft control: users with developer tools can still extract the file. */}
-                <iframe
-                  src={`${result.url}#toolbar=0&navpanes=0`}
-                  className="w-full rounded-lg border border-slate-200"
-                  style={{ height: '70vh' }}
-                  title={itemLabel}
-                />
+                <FileFrame signedUrl={result.url} title={itemLabel} />
                 {result.urlExpiresAt && (
                   <p className="mt-2 text-xs text-slate-400">
                     Link expires at {new Date(result.urlExpiresAt).toLocaleTimeString()}
