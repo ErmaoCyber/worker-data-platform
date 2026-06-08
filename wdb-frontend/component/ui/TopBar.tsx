@@ -1,11 +1,12 @@
 'use client'
 
-import { User, Bell, ShieldCheck, ChevronRight, LogOut } from 'lucide-react'
+import { User, Bell, ShieldCheck, ChevronRight, LogOut, ArrowLeft } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useNotificationRefresh } from '@/context/NotificationRefreshContext'
 import Link from 'next/link'
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5258'
 
@@ -24,7 +25,7 @@ const formatTime = (iso: string) =>
         hour12: false
     })
 
-export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
+export default function TopBar({ role, showBack: showBackProp }: { role: 'employer' | 'worker'; showBack?: boolean }) {
     console.log('TopBar rendered, role:', role)
     const [open, setOpen] = useState(false)
     const [messagesHovered, setMessagesHovered] = useState(false)
@@ -33,8 +34,13 @@ export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
     const router = useRouter()
     const { userId, token, isAuthReady, logout } = useAuth()
     const { refreshKey } = useNotificationRefresh()
+    const pathname = usePathname()
+    const pathSegments = pathname.split('/').filter(Boolean)
+    const mainPages = ['dashboard', 'dataAccess', 'requests', 'profile']
+    const showBack = pathSegments.length >= 2 && !mainPages.includes(pathSegments[1])
 
-    // 加载通知
+
+    // load notifications
     useEffect(() => {
         if (!isAuthReady || !userId || !token) return
         const load = async () => {
@@ -53,7 +59,7 @@ export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
         load()
     }, [isAuthReady, userId, token, refreshKey])
 
-    // 标记已读
+    // signify a notification as read
     async function markAsRead(notificationId: string) {
         if (!token) return
         const res = await fetch(`${API_URL}/api/notification/${notificationId}`, {
@@ -67,7 +73,7 @@ export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
         setNotifications(prev => prev.filter(n => n.id !== notificationId))
     }
 
-    // 点击外部关闭
+    // click outside to close dropdown
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -80,10 +86,23 @@ export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
     }, [])
 
     return (
-        <div className="flex justify-end items-center px-8 py-4 border-b border-gray-200 bg-white">
+        <div className="flex justify-between items-center px-8 py-4 border-b border-gray-200 bg-white">
+            {/* Back Button */}
+            {showBack ? (
+                <button
+                    onClick={() => router.back()}
+                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                >
+                    <ArrowLeft size={16} />
+                    <span>Back</span>
+                </button>
+            ) : (
+                <div />
+            )}
+
             <div className="relative" ref={dropdownRef}>
 
-                {/* User 图标 */}
+                {/* User Icon */}
                 <button
                     onClick={() => setOpen(!open)}
                     className="relative w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center hover:bg-gray-400 transition-colors"
@@ -95,6 +114,7 @@ export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
                         </span>
                     )}
                 </button>
+
 
                 {/* Dropdown */}
                 {open && (
@@ -119,7 +139,7 @@ export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
                                 <ChevronRight size={14} className="text-gray-400" />
                             </button>
 
-                            {/* 第二层通知列表 */}
+                            {/* Second-level notification list */}
                             {messagesHovered && (
                                 <div className="absolute right-full top-0 mr-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
                                     <div className="px-4 py-3 border-b border-gray-100">
@@ -169,7 +189,7 @@ export default function TopBar({ role }: { role: 'employer' | 'worker' }) {
                             )}
                         </div>
 
-                        {/* Certification — 只在 employer 端显示 */}
+                        {/* Certification — Only shown on employer side */}
                         {role === 'employer' && (
                             <div className="border-t border-gray-100">
                                 <button
