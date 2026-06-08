@@ -48,7 +48,7 @@ public class SupabaseStorageService : ISupabaseStorageService
 
         return new SignedUrlResult
         {
-            Url = $"{_supabaseUrl}{payload.SignedUrl}",
+            Url = $"{_supabaseUrl}/storage/v1{payload.SignedUrl}",
             ExpiresAt = DateTime.UtcNow.AddSeconds(expiresInSeconds)
         };
     }
@@ -57,5 +57,33 @@ public class SupabaseStorageService : ISupabaseStorageService
     {
         [JsonPropertyName("signedURL")]
         public string? SignedUrl { get; init; }
+    }
+
+
+    public async Task<string> UploadAsync(
+        Stream content,
+        string objectPath,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_supabaseUrl) || string.IsNullOrWhiteSpace(_serviceRoleKey))
+        {
+            throw new InvalidOperationException(
+                "Supabase storage configuration is missing (Supabase:Url and Supabase:ServiceRoleKey).");
+        }
+
+        var url = $"{_supabaseUrl}/storage/v1/object/{_bucket}/{objectPath}";
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.Add("Authorization", $"Bearer {_serviceRoleKey}");
+
+        using var streamContent = new StreamContent(content);
+        streamContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        request.Content = streamContent;
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return objectPath;
     }
 }

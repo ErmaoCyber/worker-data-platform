@@ -122,6 +122,30 @@ export async function deleteCustomField(
   }
 }
 
+export async function uploadProfileFile(
+  token: string,
+  file: File,
+): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${PROFILE_URL}/upload`, {
+    method: 'POST',
+    // No Content-Type here — browser sets multipart boundary automatically.
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, 'Failed to upload file.'),
+    );
+  }
+
+  const data = await response.json();
+  return data.path;
+}
+
 /**
  * Legacy compatibility wrapper.
  * Some older components still import addWorkerProfile(desc, value, category).
