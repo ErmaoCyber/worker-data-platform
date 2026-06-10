@@ -95,6 +95,14 @@ public class WorkerServiceTests
         var workerId = Guid.NewGuid();
         var requestId = Guid.NewGuid();
 
+        db.Requests.Add(new Request
+        {
+            Id = requestId,
+            WorkerId = workerId,
+            EmployerId = Guid.NewGuid(),
+            Reason = "test"
+        });
+
         db.Permissions.AddRange(
             new Permission { WorkerId = workerId, RequestId = requestId, Status = PermissionStatus.Pending, LastUpdatedAt = DateTime.UtcNow },
             new Permission { WorkerId = workerId, RequestId = requestId, Status = PermissionStatus.Pending, LastUpdatedAt = DateTime.UtcNow },
@@ -121,6 +129,14 @@ public class WorkerServiceTests
         var workerId = Guid.NewGuid();
         var requestId = Guid.NewGuid();
 
+        db.Requests.Add(new Request
+        {
+            Id = requestId,
+            WorkerId = workerId,
+            EmployerId = Guid.NewGuid(),
+            Reason = "test"
+        });
+
         db.Permissions.AddRange(
             new Permission { WorkerId = workerId, RequestId = requestId, Status = PermissionStatus.Pending, LastUpdatedAt = DateTime.UtcNow },
             new Permission { WorkerId = workerId, RequestId = requestId, Status = PermissionStatus.Approved, LastUpdatedAt = DateTime.UtcNow }
@@ -144,13 +160,22 @@ public class WorkerServiceTests
         using var db = CreateDbContext(nameof(UpdateAsync_ChangesStatusAndTimestamp));
         var workerId = Guid.NewGuid();
         var permissionId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
         var originalTimestamp = DateTime.UtcNow.AddSeconds(-10);
+
+        db.Requests.Add(new Request
+        {
+            Id = requestId,
+            WorkerId = workerId,
+            EmployerId = Guid.NewGuid(),
+            Reason = "test"
+        });
 
         db.Permissions.Add(new Permission
         {
             Id = permissionId,
             WorkerId = workerId,
-            RequestId = Guid.NewGuid(),
+            RequestId = requestId,
             Status = PermissionStatus.Pending,
             LastUpdatedAt = originalTimestamp
         });
@@ -173,12 +198,22 @@ public class WorkerServiceTests
         // Arrange
         using var db = CreateDbContext(nameof(UpdateAsync_TerminalStatus_ThrowsInvalidOperationException));
         var permissionId = Guid.NewGuid();
+        var workerId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+
+        db.Requests.Add(new Request
+        {
+            Id = requestId,
+            WorkerId = workerId,
+            EmployerId = Guid.NewGuid(),
+            Reason = "test"
+        });
 
         db.Permissions.Add(new Permission
         {
             Id = permissionId,
-            WorkerId = Guid.NewGuid(),
-            RequestId = Guid.NewGuid(),
+            WorkerId = workerId,
+            RequestId = requestId,
             Status = PermissionStatus.Rejected,
             LastUpdatedAt = DateTime.UtcNow
         });

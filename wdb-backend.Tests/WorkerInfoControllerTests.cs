@@ -183,7 +183,7 @@ public class WorkerInfoControllerTests
         // Arrange
         var id = Guid.NewGuid();
         _mockService.Setup(s => s.DeleteAsync(_workerId, id, It.IsAny<CancellationToken>()))
-                    .Returns((Task<WorkerInfo>)Task.CompletedTask);
+                    .ReturnsAsync(new WorkerInfo { Type = "text" });
 
         // Act
         var result = await _controller.DeleteCustom(id, CancellationToken.None);
