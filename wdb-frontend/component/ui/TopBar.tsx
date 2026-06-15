@@ -1,10 +1,11 @@
 'use client'
 
-import { User, Bell, ShieldCheck, ChevronRight, LogOut, ArrowLeft } from 'lucide-react'
+import { User, Bell, ShieldCheck, ChevronRight, ChevronDown, ChevronUp, LogOut, ArrowLeft } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useNotificationRefresh } from '@/context/NotificationRefreshContext'
+import { NotificationIcon, getTypeStyle, formatRelativeTime } from '@/app/notification/displayConfig'
 import Link from 'next/link'
 
 
@@ -18,18 +19,22 @@ interface NotificationFormat {
     notificationTime: string
 }
 
-const formatTime = (iso: string) =>
-    new Date(iso).toLocaleString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: false
-    })
-
 export default function TopBar({ role, showBack: showBackProp }: { role: 'employer' | 'worker'; showBack?: boolean }) {
     console.log('TopBar rendered, role:', role)
     const [open, setOpen] = useState(false)
     const [messagesHovered, setMessagesHovered] = useState(false)
     const [notifications, setNotifications] = useState<NotificationFormat[]>([])
+    // Track which notifications have their description expanded (per-row).
+    const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+    function toggleExpand(id: string, e: React.MouseEvent) {
+        e.stopPropagation()
+        setExpanded(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id); else next.add(id)
+            return next
+        })
+    }
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const { userId, token, isAuthReady, logout } = useAuth()
@@ -38,6 +43,7 @@ export default function TopBar({ role, showBack: showBackProp }: { role: 'employ
     const pathSegments = pathname.split('/').filter(Boolean)
     const mainPages = ['dashboard', 'dataAccess', 'requests', 'profile']
     const showBack = pathSegments.length >= 2 && !mainPages.includes(pathSegments[1])
+    const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 
     // load notifications
@@ -123,8 +129,15 @@ export default function TopBar({ role, showBack: showBackProp }: { role: 'employ
                         {/* Messages */}
                         <div
                             className="relative"
-                            onMouseEnter={() => setMessagesHovered(true)}
-                            onMouseLeave={() => setMessagesHovered(false)}
+                            onMouseEnter={() => {
+                                if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+                                setMessagesHovered(true)
+                            }}
+                            onMouseLeave={() => {
+                                closeTimerRef.current = setTimeout(() => {
+                                    setMessagesHovered(false)
+                                }, 300)
+                            }}
                         >
                             <button className="flex items-center justify-between w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-t-xl">
                                 <div className="flex items-center gap-2">
@@ -141,13 +154,17 @@ export default function TopBar({ role, showBack: showBackProp }: { role: 'employ
 
                             {/* Second-level notification list */}
                             {messagesHovered && (
-                                <div className="absolute right-full top-0 mr-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-                                    <div className="px-4 py-3 border-b border-gray-100">
-                                        <p className="text-sm font-semibold text-gray-800">Notifications</p>
-                                        {notifications.length > 0 && (
-                                            <p className="text-xs text-gray-400 mt-0.5">{notifications.length} unread</p>
-                                        )}
-                                    </div>
+                                <div
+                                    className="absolute right-full top-0 mr-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50"
+                                    onMouseEnter={() => {
+                                        if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+                                    }}
+                                    onMouseLeave={() => {
+                                        closeTimerRef.current = setTimeout(() => {
+                                            setMessagesHovered(false)
+                                        }, 300)
+                                    }}
+                                >
 
                                     <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
                                         {notifications.length === 0 ? (
@@ -155,24 +172,46 @@ export default function TopBar({ role, showBack: showBackProp }: { role: 'employ
                                                 No unread notifications
                                             </p>
                                         ) : (
-                                            notifications.map(n => (
+                                            notifications.map(n => {
+                                                const typeStyle = getTypeStyle(n.notificationType)
+                                                const isExpanded = expanded.has(n.id)
+                                                // ~75 chars roughly fills 2 narrow lines; below this it won't truncate so skip the button.
+                                                const couldTruncate = (n.workerInfoDesc?.length ?? 0) > 75
+                                                return (
                                                 <div
                                                     key={n.id}
                                                     onClick={() => markAsRead(n.id)}
                                                     className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
                                                 >
-                                                    <span className="mt-1.5 w-2 h-2 flex-shrink-0 rounded-full bg-red-500" />
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-medium text-gray-800 leading-snug">
-                                                            [{n.notificationType}]
-                                                            {n.workerInfoDesc ? ` — ${n.workerInfoDesc}` : ''}
+                                                    <NotificationIcon type={n.notificationType} size="sm" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm font-semibold text-gray-800 leading-snug truncate">
+                                                            {typeStyle.label || n.notificationType}
+                                                            {n.employerName ? ` · ${n.employerName}` : ''}
                                                         </p>
-                                                        <p className="text-xs text-gray-400 mt-0.5">
-                                                            {formatTime(n.notificationTime)}
-                                                        </p>
+                                                        {n.workerInfoDesc && (
+                                                            <p className={`text-xs text-gray-500 mt-0.5 ${isExpanded ? '' : 'line-clamp-2'}`}>
+                                                                {n.workerInfoDesc}
+                                                            </p>
+                                                        )}
+                                                        <div className="flex items-center justify-between mt-0.5">
+                                                            <p className="text-xs text-gray-400">
+                                                                {formatRelativeTime(n.notificationTime)}
+                                                            </p>
+                                                            {couldTruncate && (
+                                                                <button
+                                                                    onClick={(e) => toggleExpand(n.id, e)}
+                                                                    className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+                                                                >
+                                                                    {isExpanded ? 'Show less' : 'Show more'}
+                                                                    {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            ))
+                                                )
+                                            })
                                         )}
                                     </div>
 
@@ -180,9 +219,10 @@ export default function TopBar({ role, showBack: showBackProp }: { role: 'employ
                                         <Link
                                             href="/notification/all"
                                             onClick={() => setOpen(false)}
-                                            className="text-xs font-medium text-blue-500 hover:text-blue-600 transition-colors"
+                                            className="flex items-center justify-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 py-2 rounded-md transition-colors"
                                         >
-                                            View all notifications →
+                                            View all notifications
+                                            <ChevronRight size={12} />
                                         </Link>
                                     </div>
                                 </div>

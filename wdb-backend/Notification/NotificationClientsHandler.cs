@@ -33,12 +33,17 @@ public class NotificationClientsHandler : INotificationHandler<NotificationEvent
             IsRead = false
         }, ct);
 
-        // Format and push to the worker's SignalR group.
+        // Push structured payload so the frontend can render the toast with the
+        // same icon + label + categories layout as the bell dropdown.
         var format = await _notificationRepo.FormatNotification(e, ct);
+        var payload = new
+        {
+            type = format.NotificationType,
+            employerName = format.EmployerName,
+            workerInfoDesc = format.WorkInfoDesc
+        };
         await _hubContext.Clients
             .Group(e.WorkerId.ToString())
-            .SendAsync("NotificationInfo",
-                $"{format.EmployerName} {format.NotificationType.ToLower()}ed your {format.WorkInfoDesc} at {format.NotificationTime}",
-                ct);
+            .SendAsync("NotificationInfo", payload, ct);
     }
 }
