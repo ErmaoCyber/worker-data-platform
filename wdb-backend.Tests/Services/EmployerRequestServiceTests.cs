@@ -27,7 +27,7 @@ public class EmployerRequestServiceTests
         var mediator = new Mock<IMediator>();
         mediator
             .Setup(m => m.Send(It.IsAny<NotificationCommand>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Unit.Value);
+            .Returns(Task.CompletedTask);
 
         var blockchain = new Mock<IBlockchainService>();
         blockchain
@@ -128,6 +128,7 @@ public class EmployerRequestServiceTests
         context.Fields.Add(new Field
         {
             Id = fieldId,
+            FieldName = "full_name",
             Label = "Full Name",
             AllowedType = "text"
         });
@@ -190,6 +191,7 @@ public class EmployerRequestServiceTests
         context.Fields.Add(new Field
         {
             Id = fieldId,
+            FieldName = "full_name",
             Label = "Full Name",
             AllowedType = "text"
         });

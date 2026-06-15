@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.Models;
 using wdb_backend.Services;
@@ -158,6 +159,7 @@ public class EmployerSentRequestServiceTests
         {
             Id = fieldId,
             CategoryId = categoryId,
+            FieldName = "full_name",
             Label = "Full Name",
             AllowedType = "text"
         });
@@ -361,7 +363,7 @@ public class EmployerSentRequestServiceTests
                 Id = olderRequestId,
                 EmployerId = employerId,
                 WorkerId = workerId,
-                Reason = "Older",
+                Reason = "Older request",
                 CreatedAt = new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc),
                 ExpiryDate = null
             },
@@ -370,8 +372,8 @@ public class EmployerSentRequestServiceTests
                 Id = newerRequestId,
                 EmployerId = employerId,
                 WorkerId = workerId,
-                Reason = "Newer",
-                CreatedAt = new DateTime(2026, 6, 3, 9, 0, 0, DateTimeKind.Utc),
+                Reason = "Newer request",
+                CreatedAt = new DateTime(2026, 6, 5, 9, 0, 0, DateTimeKind.Utc),
                 ExpiryDate = null
             });
 
@@ -381,6 +383,7 @@ public class EmployerSentRequestServiceTests
 
         var result = await service.GetSentRequestsAsync(employerId);
 
+        Assert.Equal(2, result.Count);
         Assert.Equal(newerRequestId, result[0].RequestId);
         Assert.Equal(olderRequestId, result[1].RequestId);
     }

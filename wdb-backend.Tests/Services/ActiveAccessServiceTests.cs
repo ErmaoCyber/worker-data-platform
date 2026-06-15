@@ -66,6 +66,7 @@ public class ActiveAccessServiceTests
         {
             Id = fieldId,
             CategoryId = categoryId,
+            FieldName = "full_name",
             Label = "Full Name",
             AllowedType = "text"
         });
@@ -405,6 +406,7 @@ public class ActiveAccessServiceTests
         {
             Id = fieldId,
             CategoryId = categoryId,
+            FieldName = "ppe_requirements",
             Label = "PPE Requirements",
             AllowedType = "text"
         });

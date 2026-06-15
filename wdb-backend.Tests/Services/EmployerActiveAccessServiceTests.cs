@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using wdb_backend.Abstractions;
+using wdb_backend.Common;
 using wdb_backend.Data;
 using wdb_backend.Models;
 using wdb_backend.Services;
@@ -77,6 +78,7 @@ public class EmployerActiveAccessServiceTests
         {
             Id = fieldId,
             CategoryId = categoryId,
+            FieldName = "full_name",
             Label = "Full Name",
             AllowedType = "text"
         });
