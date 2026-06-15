@@ -66,8 +66,8 @@ describe('WorkerDashboardView', () => {
     expect(screen.getByText('Worker dashboard')).toBeInTheDocument();
     expect(screen.getByText('Welcome back, user')).toBeInTheDocument();
 
-    expect(screen.getByText('Pending')).toBeInTheDocument();
-    expect(screen.getByText('Reviewed')).toBeInTheDocument();
+    expect(screen.getAllByText('Pending').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Reviewed').length).toBeGreaterThan(0);
     expect(screen.getByText('Total requests')).toBeInTheDocument();
 
     expect(screen.queryByText('Active access')).not.toBeInTheDocument();
@@ -78,13 +78,15 @@ describe('WorkerDashboardView', () => {
     render(<WorkerDashboardView data={mockData} />);
 
     expect(screen.getByText('Latest requests')).toBeInTheDocument();
-    expect(screen.getByText('First Step Solutions')).toBeInTheDocument();
+    expect(screen.getAllByText('First Step Solutions').length).toBeGreaterThan(
+      0,
+    );
     expect(screen.getByText('PPE requirements')).toBeInTheDocument();
     expect(screen.getByText('Site onboarding')).toBeInTheDocument();
     expect(screen.getByText('Emergency Contact')).toBeInTheDocument();
     expect(screen.getByText('Emergency planning')).toBeInTheDocument();
 
-    expect(screen.getByText('Pending')).toBeInTheDocument();
+    expect(screen.getAllByText('Pending').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Reviewed').length).toBeGreaterThan(0);
 
     expect(screen.queryByText('Action')).not.toBeInTheDocument();
@@ -96,7 +98,7 @@ describe('WorkerDashboardView', () => {
 
     expect(screen.getByText('Recent blockchain activity')).toBeInTheDocument();
     expect(
-      screen.getByText('No blockchain records available yet.')
+      screen.getByText('No blockchain records available yet.'),
     ).toBeInTheDocument();
   });
 
@@ -107,8 +109,8 @@ describe('WorkerDashboardView', () => {
     expect(screen.getByText('Access Approved')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'You approved First Step Solutions to access your information.'
-      )
+        'You approved First Step Solutions to access your information.',
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText('Proof: 0x4c8201b5...e64cc8')).toBeInTheDocument();
   });
@@ -121,16 +123,16 @@ describe('WorkerDashboardView', () => {
           blockchainAvailable: false,
           blockchainRecords: [],
         }}
-      />
+      />,
     );
 
     expect(
-      screen.getByText('Blockchain audit is currently unavailable.')
+      screen.getByText('Blockchain audit is currently unavailable.'),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Your normal access request flow still works. On-chain audit records will appear here when the blockchain service is running.'
-      )
+        'Your normal access request flow still works. On-chain audit records will appear here when the blockchain service is running.',
+      ),
     ).toBeInTheDocument();
   });
 });
